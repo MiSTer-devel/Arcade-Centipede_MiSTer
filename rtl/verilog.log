@@ -1,0 +1,22 @@
+GPLCVER_2.12a of 05/16/07 (Linux-elf).
+Copyright (c) 1991-2007 Pragmatic C Software Corp.
+  All Rights reserved.  Licensed under the GNU General Public License (GPL).
+  See the 'COPYING' file for details.  NO WARRANTY provided.
+Today is Thu Oct  1 11:47:21 2015.
+Compiling source file "centipede.v"
+Compiling source file "color_ram.v"
+Compiling source file "hs_ram.v"
+Compiling source file "pf_ram.v"
+Compiling source file "pokey.v"
+Compiling source file "ram.v"
+Unresolved modules or udps:
+  vprom
+  rom
+  p6502
+  pf_rom1
+  pf_rom0
+
+  5 modules or udps unresolved after library processing - cannot continue.
+  Unable to begin simulation.
+  There were 0 error(s), 0 warning(s), and 8 inform(s).
+End of GPLCVER_2.12a at Thu Oct  1 11:47:21 2015 (elapsed 0.0 seconds).

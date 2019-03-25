@@ -1,0 +1,13 @@
+
+dvid_inst/ODDR2_red		ODDR2  		X0Y0	OLOGIC_X12Y3
+dvid_inst/ODDR2_green		ODDR2  		X0Y0	OLOGIC_X11Y3
+dvid_inst/ODDR2_blue		ODDR2  		X0Y0	OLOGIC_X10Y3
+dvid_inst/ODDR2_clock		ODDR2  		X0Y0	OLOGIC_X7Y1
+
+dvid_inst/OBUFDS_blue     OBUFDS 
+dvid_inst/OBUFDS_red   
+dvid_inst/OBUFDS_green 
+dvid_inst/OBUFDS_clock 
+
+INST "hdmi/clk_dvi_p BUFGMUX_X3Y13
+INST "hdmi/clk_dvi_n  BUFGMUX_X2Y2
