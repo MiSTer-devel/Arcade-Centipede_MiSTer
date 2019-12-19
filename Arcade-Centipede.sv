@@ -29,7 +29,7 @@ module emu
 	input         RESET,
 
 	//Must be passed to hps_io module
-	inout  [44:0] HPS_BUS,
+	inout  [45:0] HPS_BUS,
 
 	//Base video clock. Usually equals to CLK_SYS.
 	output        VGA_CLK,
@@ -44,6 +44,7 @@ module emu
 	output        VGA_HS,
 	output        VGA_VS,
 	output        VGA_DE,    // = ~(VBlank | HBlank)
+	output        VGA_F1,
 
 	//Base video clock. Usually equals to CLK_SYS.
 	output        HDMI_CLK,
@@ -74,21 +75,31 @@ module emu
 
 	output [15:0] AUDIO_L,
 	output [15:0] AUDIO_R,
-	output        AUDIO_S    // 1 - signed audio samples, 0 - unsigned
+	output        AUDIO_S,   // 1 - signed audio samples, 0 - unsigned
+	
+	// Open-drain User port.
+	// 0 - D+/RX
+	// 1 - D-/TX
+	// 2..6 - USR2..USR6
+	// Set USER_OUT to 1 to read from USER_IN.
+	input   [6:0] USER_IN,
+	output  [6:0] USER_OUT
+	
+	
 );
 
+assign VGA_F1    = 0;
+assign USER_OUT  = '1;
 assign LED_USER  = ioctl_download;
 assign LED_DISK  = 0;
 assign LED_POWER = 0;
 
-assign HDMI_ARX = status[1] ? 8'd16 : status[2] ? 8'd4 : 8'd1;
-assign HDMI_ARY = status[1] ? 8'd9  : status[2] ? 8'd3 : 8'd1;
+assign HDMI_ARX = status[1] ? 8'd16 : status[2] ? 8'd4 : 8'd3;
+assign HDMI_ARY = status[1] ? 8'd9  : status[2] ? 8'd3 : 8'd4;
 
 `include "build_id.v" 
 localparam CONF_STR = {
 	"A.CENTIPED;;",
-	"F,rom;", // allow loading of alternate ROMs
-	"-;",
 	"O1,Aspect Ratio,Original,Wide;",
 	"O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",  
@@ -96,13 +107,13 @@ localparam CONF_STR = {
 	"O89,Lives,2,3,4,5;",
 	"OAB,Bonus,10000,12000,15000,20000;",
 	"OC,Cabinet,Upright,Cocktail;",
-   "OD,Test,No,Yes;",
-   "OEF,Language,English,German,French,Spanish;",
-   "OG,Difficulty,Easy,Hard;",
+	"OD,Test,No,Yes;",
+	"OEF,Language,English,German,French,Spanish;",
+	"OG,Difficulty,Easy,Hard;",
 	"-;",
 
 	"R0,Reset;",
-	"J1,Jump,Start 1P,Start 2P;",
+	"J1,Fire,Start 1P,Start 2P;",
 	"V,v",`BUILD_DATE
 };
 
@@ -146,6 +157,9 @@ wire [10:0] ps2_key;
 wire [15:0] joystick_0, joystick_1;
 wire [15:0] joy = joystick_0 | joystick_1;
 
+wire [21:0] gamma_bus;
+
+
 hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 (
 	.clk_sys(clk_sys),
@@ -156,6 +170,7 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 	.buttons(buttons),
 	.status(status),
 	.forced_scandoubler(forced_scandoubler),
+	.gamma_bus(gamma_bus),
 
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
@@ -245,22 +260,35 @@ wire [2:0] b;
 wire ce_vid = clk_6_o;
 wire [8:0] rgb;
 
+/*
 reg ce_pix;
-always @(posedge clk_48) begin
+always @(posedge clk_24) begin
 	reg old_clk;
 	
-	old_clk <= clk_sys;
-	ce_pix <= old_clk & ~clk_sys;
+	old_clk <= ce_vid;
+	ce_pix <= old_clk & ~ce_vid;
 end
+*/
+
+reg ce_pix;
+always @(posedge clk_48) begin
+        reg [1:0] div;
+
+        div <= div + 1'd1;
+        ce_pix <= !div;
+end
+
 
 // is it bgr?
 
 //arcade_rotate_fx #(384,282,9) arcade_video
-arcade_rotate_fx #(512,240,9,1) arcade_video
+//arcade_rotate_fx #(512,240,9,1) arcade_video
+arcade_rotate_fx #(521,240,9,1) arcade_video
 //arcade_rotate_fx #(512,224,9,4,1) arcade_video
 (
 	.*,
 
+	//.clk_video(clk_24),
 	.clk_video(clk_48),
 	//.ce_pix(clk_12),
 
@@ -277,10 +305,10 @@ arcade_rotate_fx #(512,240,9,1) arcade_video
 );
 
 
-wire [7:0] audio;
-assign AUDIO_L = {audio,audio};
-assign AUDIO_R = AUDIO_L;
-assign AUDIO_S = 0;
+   wire [7:0] audio;
+   assign AUDIO_L = {audio,audio};
+   assign AUDIO_R = AUDIO_L;
+   assign AUDIO_S = 0;
 
    wire [3:0] led_o;
    wire [7:0] trakball_i;
@@ -335,9 +363,9 @@ wire clk_6_o;
 		 .led_o(led_o),
 		 .audio_o(audio),
 
-	     .dn_addr(ioctl_addr[15:0]),
-        .dn_data(ioctl_dout),
-        .dn_wr(ioctl_wr),
+		 .dn_addr(ioctl_addr[15:0]),
+		 .dn_data(ioctl_dout),
+		 .dn_wr(ioctl_wr),
 	 
 		 
 		 .rgb_o(rgb),
@@ -346,7 +374,7 @@ wire clk_6_o;
 		 .vsync_o(vs),
 		 .hblank_o(hblank),
 		 .vblank_o(vblank),
-	    .clk_6mhz_o(clk_6_o)
+		 .clk_6mhz_o(clk_6_o)
 
 		 /*
 		 

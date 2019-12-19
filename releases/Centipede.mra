@@ -1,0 +1,20 @@
+<misterromdescription>
+	<name>Centipede (revision 4)</name>
+	<mameversion>0216</mameversion>
+	<mratimestamp>201911270000</mratimestamp>
+	<year>1980</year>
+	<manufacturer>Atari</manufacturer>
+	<category>Maze / Bugs</category>
+	<category>Maze / Centipede</category>
+	<category>Maze / Spiders</category>
+	<rbf>centiped</rbf>
+	<rom index="0" zip="centiped.zip" md5="92ab4507356aca0896d5c4138e82b9c4" type="merged|nonmerged">
+		<part name="136001-407.d1"/>
+		<part name="136001-408.e1"/>
+		<part name="136001-409.fh1"/>
+		<part name="136001-410.j1"/>
+		<part name="136001-211.f7"/>
+		<part name="136001-212.hj7"/>
+		<part name="136001-213.p4"/>
+	</rom>
+</misterromdescription>
