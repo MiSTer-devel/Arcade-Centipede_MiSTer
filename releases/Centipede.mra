@@ -7,7 +7,7 @@
 	<category>Maze / Bugs</category>
 	<category>Maze / Centipede</category>
 	<category>Maze / Spiders</category>
-	<rbf>centiped</rbf>
+	<rbf>centipede</rbf>
 	<rom index="0" zip="centiped.zip" md5="92ab4507356aca0896d5c4138e82b9c4" type="merged|nonmerged">
 		<part name="136001-407.d1"/>
 		<part name="136001-408.e1"/>
