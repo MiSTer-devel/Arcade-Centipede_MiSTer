@@ -250,7 +250,7 @@ always @(posedge clk_48) begin
 end
 
 wire no_rotate = status[2] | direct_video ;
-wire rotate_ccw = 0;
+wire rotate_ccw = 1;
 screen_rotate screen_rotate (.*);
 
 
