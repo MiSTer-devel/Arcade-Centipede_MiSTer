@@ -184,6 +184,8 @@ wire  [7:0] ioctl_dout;
 wire [15:0] joystick_0, joystick_1;
 wire [15:0] joy = joystick_0 | joystick_1;
 
+wire [24:0] ps2_mouse;
+
 wire [21:0] gamma_bus;
 
 
@@ -209,7 +211,9 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 	.ioctl_dout(ioctl_dout),
 
 	.joystick_0(joystick_0),
-	.joystick_1(joystick_1)
+	.joystick_1(joystick_1),
+	
+	.ps2_mouse(ps2_mouse)
 );
 
 
@@ -217,13 +221,13 @@ wire m_up_2     = joy[3];
 wire m_down_2   = joy[2];
 wire m_left_2   = joy[1];
 wire m_right_2  = joy[0];
-wire m_fire_2  =  joy[4];
+wire m_fire_2  =  joy[4] | ps2_mouse[0];
 
 wire m_up     = joy[3];
 wire m_down   = joy[2];
 wire m_left   = joy[1];
 wire m_right  = joy[0];
-wire m_fire   = joy[4];
+wire m_fire   = joy[4] | ps2_mouse[0];
 
 wire m_start1 = joy[5];
 wire m_start2 = joy[6];
@@ -283,8 +287,6 @@ arcade_video #(521,9,1) arcade_video
    wire [9:0] playerinput_i;
 
   
-
-   assign trakball_i = 0;
    assign sw1_i = 8'h54;
    assign sw2_i = 8'b0;
 /*
@@ -308,7 +310,45 @@ arcade_video #(521,9,1) arcade_video
 	assign joystick_i = { ~m_right,~m_left,~m_down,~m_up, ~m_right_2,~m_left_2,~m_down_2,~m_up_2};
 //   assign playerinput_i = 10'b111_101_11_11;
 
+   assign trakball_i = {trakdata[3],trakdata[3],trakdata[2],trakdata[2],trakdata[1],trakdata[1],trakdata[0],trakdata[0]};
+	reg [3:0] trakdata;
 
+// Trackball movement
+always @(posedge clk_sys) begin
+	reg [11:0] mposx;
+	reg [11:0] mposy;
+	reg        old_mstate;
+	
+	old_mstate <= ps2_mouse[24];
+	if(old_mstate != ps2_mouse[24]) begin
+		if(!(^mposx[11:10])) mposx <= mposx + {{4{ps2_mouse[4]}}, ps2_mouse[15:8]};
+		if(!(^mposy[11:10])) mposy <= mposy + {{4{ps2_mouse[5]}}, ps2_mouse[23:16]};
+	end
+	
+	if(mposx != 0) begin
+		if(mposx[11]) begin
+			mposx <= mposx + 1'b1;
+			trakdata[3] = 1'b0;
+		end
+		else begin
+			mposx <= mposx - 1'b1;
+			trakdata[3] = 1'b1;
+		end
+		trakdata[2] = !trakdata[2];
+	end
+	
+	if(mposy != 0) begin
+		if(mposy[11]) begin
+			mposy <= mposy + 1'b1;
+			trakdata[1] = 1'b0;
+		end
+		else begin
+			mposy <= mposy - 1'b1;
+			trakdata[1] = 1'b1;
+		end
+		trakdata[0] = !trakdata[0];
+	end
+end
 
 
 	wire reset;
