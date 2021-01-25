@@ -18,4 +18,10 @@
 		<part crc="b1397029" name="136001-212.hj7"/>
 		<part crc="6fa3093a" name="136001-213.p4"/>
 	</rom>
+ <rom index="3" md5="none">
+ <part>00 00 00 0b 0f 10 01 00
+00 00 00 23 0f 04 12 00</part>
+</rom>	
+	<nvram index="4" size="30"/>
+
 </misterromdescription>

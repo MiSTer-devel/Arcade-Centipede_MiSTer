@@ -11,4 +11,5 @@ set_global_assignment -name VERILOG_FILE rtl/ds_dac.v
 set_global_assignment -name VERILOG_FILE rtl/color_ram.v
 set_global_assignment -name VERILOG_FILE rtl/centipede.v
 set_global_assignment -name VHDL_FILE dpram.vhd
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/hiscore.sv
 set_global_assignment -name SYSTEMVERILOG_FILE "Arcade-Centipede.sv"

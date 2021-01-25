@@ -127,6 +127,7 @@ assign VIDEO_ARY = (!ar) ? (status[2]  ? 8'd3 : 8'd4) : 12'd0;
 `include "build_id.v" 
 localparam CONF_STR = {
 	"A.CENTIPED;;",
+	"F4, HI,Load HI;",
 	"H0OJK,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",  
@@ -177,9 +178,12 @@ wire        forced_scandoubler;
 wire        direct_video;
 
 wire        ioctl_download;
+wire        ioctl_upload;
 wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
+wire  [7:0] ioctl_din;
+wire  [7:0] ioctl_index;
 
 wire [15:0] joystick_0, joystick_1;
 wire [15:0] joy = joystick_0 | joystick_1;
@@ -205,10 +209,13 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 	.gamma_bus(gamma_bus),
 	.direct_video(direct_video),
 
+	.ioctl_upload(ioctl_upload),
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
 	.ioctl_addr(ioctl_addr),
 	.ioctl_dout(ioctl_dout),
+	.ioctl_din(ioctl_din),
+	.ioctl_index(ioctl_index),
 
 	.joystick_0(joystick_0),
 	.joystick_1(joystick_1),
@@ -370,7 +377,7 @@ wire clk_6_o;
 
 		 .dn_addr(ioctl_addr[15:0]),
 		 .dn_data(ioctl_dout),
-		 .dn_wr(ioctl_wr),
+		 .dn_wr(ioctl_wr & (ioctl_index==0)),
 	 
 		 
 		 .rgb_o(rgb),
@@ -379,7 +386,11 @@ wire clk_6_o;
 		 .vsync_o(vs),
 		 .hblank_o(hblank),
 		 .vblank_o(vblank),
-		 .clk_6mhz_o(clk_6_o)
+		 .clk_6mhz_o(clk_6_o),
+		.ram_address(ram_address),
+		.ram_data(ioctl_din),
+		.ram_data_in(hiscore_to_ram),
+		.ram_data_write(hiscore_write)
 
 		 /*
 		 
@@ -391,6 +402,23 @@ wire clk_6_o;
 		 .vblank_o(cga_vblank),
 */
 		 );
+wire [9:0]ram_address;
+wire [7:0]hiscore_to_ram;
+wire hiscore_write;
 
-
+hiscore hi (
+   .clk(clk_12),
+   .ioctl_upload(ioctl_upload),
+   .ioctl_download(ioctl_download),
+   .ioctl_wr(ioctl_wr),
+   .ioctl_addr(ioctl_addr),
+   .ioctl_dout(ioctl_dout),
+   .ioctl_din(ioctl_din),
+   .ioctl_index(ioctl_index),
+   .ram_address(ram_address),
+	.data_to_ram(hiscore_to_ram),
+	.ram_write(hiscore_write)
+);
+ 
+		 
 endmodule
