@@ -376,9 +376,7 @@ module centipede(
 	     //.enable_b(~rom_n),
         .clock_b(s_6mhz),
         .address_b(ab[12:0]),
-        .q_b(rom_out[7:0]),
-		  .wren_b(ram_data_write),
-		  .data_b(ram_data_in)
+        .q_b(rom_out[7:0])
 
    );
 
@@ -410,8 +408,11 @@ ram (
 
 	.clock_b(clk_12mhz),
 	.address_b(ram_address),
-	.q_b(ram_data)
-);			
+	.q_b(ram_data),
+   .wren_b(ram_data_write),
+   .data_b(ram_data_in)
+
+	);			
 			
 //
 `ifdef debug_ram
