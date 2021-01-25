@@ -1,5 +1,4 @@
-set_global_assignment -name SYSTEMVERILOG_FILE rtl/Pokey/POKEY.sv
-set_global_assignment -name SYSTEMVERILOG_FILE rtl/Pokey/matoro.sv
+set_global_assignment -name QIP_FILE rtl/pokey/pokey.qip
 set_global_assignment -name VERILOG_FILE rtl/ram.v
 set_global_assignment -name VERILOG_FILE rtl/pf_ram_dp.v
 set_global_assignment -name VERILOG_FILE rtl/ram_dp256kx8.v
