@@ -359,7 +359,7 @@ end
 
 
 	wire reset;
-assign reset = (RESET | status[0] | buttons[1] | ioctl_download);
+assign reset = (RESET | status[0] | buttons[1] | (ioctl_download & ioctl_index==0));
 wire clk_6_o;
 	
    // game & cpu

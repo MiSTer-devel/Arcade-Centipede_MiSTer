@@ -197,7 +197,7 @@ else if (done_downloading==1'b1 && ioctl_upload==1'b0) begin
 
        3'b011:
             begin
-                local_addr<= local_addr+1'b1;
+               local_addr<= local_addr+1'b1;
                 $display("DUMP local_addr %x ram_addr %x addr_base %x base_io_addr %x end_addr %x ram_write %x",local_addr,ram_addr,addr_base,base_io_addr,end_addr,ram_write);
                 if (ram_addr==end_addr[24:0])
                 begin
@@ -211,10 +211,10 @@ else if (done_downloading==1'b1 && ioctl_upload==1'b0) begin
                      state<=3'b110;
                    end
                 end else begin
-                   ram_addr<= addr_base + (local_addr - base_io_addr);
+                   //ram_addr<= addr_base + (local_addr - base_io_addr);
                    state<=3'b111;
                 end
-                ram_write<=0;
+               ram_write<=0;
             end
         3'b100:
            begin // our local ram should be correct, 
@@ -229,11 +229,12 @@ else if (done_downloading==1'b1 && ioctl_upload==1'b0) begin
            end
         3'b110:  // counter is correct, next state the output of our local ram will be correct
 	        begin
-                $display("state 110 addr_base %x %x %x  ram_addr ",addr_base,local_addr,counter,ram_addr);
+               $display("state 110 addr_base %x %x %x  ram_addr ",addr_base,local_addr,counter,ram_addr);
 		          state<=3'b100;
            end
         3'b111: // local ram is  correct
            begin
+                ram_addr<= addr_base + (local_addr - base_io_addr);
 	             ram_write<=1;
                 state<=3'b011;
            end
