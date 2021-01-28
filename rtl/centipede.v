@@ -209,7 +209,8 @@ module centipede(
    wire [7:0]  playerin_out;
 
    wire [7:0]  pokey_out;
-   
+   wire [3:0] pokey_ch0, pokey_ch1, pokey_ch2, pokey_ch3; 
+ 
    // ------------------------------------------------------------------------
 
    // Synchronizer
@@ -1155,6 +1156,8 @@ module centipede(
 			    assign audio_o = { 2'b0, audio };
 
 */
+
+/*
    wire [3:0] audio_pokey_new;
    POKEY POKEY(
    .Din(db_out[7:0]),
@@ -1168,6 +1171,24 @@ module centipede(
    .clk(clk_100mhz)
    );
 	assign audio_o = {audio_pokey_new,4'b0000} ;
+*/
+
+	pokey pokey(
+		.clk(phi2),
+		.enable_179(1),
+		.addr(ab[3:0]),
+		.data_in(db_out[7:0]),
+		.wr_en(~rw_n & ~pokey_n),
+		.reset_n(mpu_reset_n),
+		.data_out(pokey_out),
+		.channel_0_out(pokey_ch0),
+		.channel_1_out(pokey_ch1),
+		.channel_2_out(pokey_ch2),
+		.channel_3_out(pokey_ch3)
+	);
+
+	assign audio = (pokey_ch0+pokey_ch1)+(pokey_ch2+pokey_ch3);
+	assign audio_o = {audio, 2'b0};
 
    //
    reg [7:0]  last_pokey_rd;
