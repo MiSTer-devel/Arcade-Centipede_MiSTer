@@ -154,18 +154,15 @@ wire clk_sys=clk_12;
 wire clk_48;
 wire clk_24;
 wire clk_12;
-wire clk_6;
-wire clk_100mhz;
+
 
 pll pll
 (
 	.refclk(CLK_50M),
 	.rst(0),
-	.outclk_0(clk_24),
-	.outclk_1(clk_12),
-	.outclk_2(clk_6),
-	.outclk_3(clk_100mhz),
-	.outclk_4(clk_48)
+	.outclk_0(clk_48),
+	.outclk_1(clk_24),
+	.outclk_2(clk_12)
 	
 );
 
@@ -236,8 +233,6 @@ wire m_coin   = joy[7];
 wire m_test = ~status[13];
 wire m_slam = 1'b1;//generate Noise
 
-
-
 wire hblank, vblank;
 wire hs, vs;
 wire [2:0] r,g;
@@ -246,7 +241,7 @@ wire ce_vid = clk_6_o;
 wire [8:0] rgb;
 
 reg ce_pix;
-always @(posedge clk_48) begin
+always @(posedge clk_24) begin
         reg [1:0] div;
 
         div <= div + 1'd1;
@@ -258,11 +253,11 @@ wire rotate_ccw = 1;
 screen_rotate screen_rotate (.*);
 
 
-arcade_video #(521,9,1) arcade_video
+arcade_video #(256,9,1) arcade_video
 (
 	.*,
 
-	.clk_video(clk_48),
+	.clk_video(clk_24),
 	.RGB_in({rgb[2:0],rgb[5:3],rgb[8:6]}),
 	.HBlank(hblank),
 	.VBlank(vblank),
@@ -286,29 +281,12 @@ arcade_video #(521,9,1) arcade_video
    wire [7:0] sw2_i;
    wire [9:0] playerinput_i;
 
-  
-   assign sw1_i = 8'h54;
-   assign sw2_i = 8'b0;
-/*
-   wire       coin_r, coin_c, coin_l, self_test, cocktail, slam, start1, start2, fire2, fire1;
+   assign sw2_i = 8'h02;	// hardcoded for 1 coin 1 play
 
-   assign coin_r = 1;
-   assign coin_c = 1;
-   assign coin_l = 1;
-   assign self_test = 1;
-   assign cocktail = 0;
-   assign slam = 1;
-   assign start1 = 1;
-   assign start2 = 1;
-   assign fire2 = 1;
-   assign fire1 = 1;
-*/
-//   assign playerinput_i = { coin_r, coin_c, coin_l, self_test, cocktail, slam, ~mstart1, ~mstart2, 1'b1, ~mfire };
+// inputs: coin R, coin C, coin L, self test, cocktail, slam, start 2, start 1, fire 2, fire 1
    assign playerinput_i = { 1'b1, 1'b1, ~(m_coin), m_test, status[12], m_slam, ~(m_start2), ~(m_start1), ~m_fire_2, ~m_fire };
-	
-	
-	assign joystick_i = { ~m_right,~m_left,~m_down,~m_up, ~m_right_2,~m_left_2,~m_down_2,~m_up_2};
-//   assign playerinput_i = 10'b111_101_11_11;
+
+   assign joystick_i = { ~m_right,~m_left,~m_down,~m_up, ~m_right_2,~m_left_2,~m_down_2,~m_up_2};
 
    assign trakball_i = {trakdata[3],trakdata[3],trakdata[2],trakdata[2],trakdata[1],trakdata[1],trakdata[0],trakdata[0]};
 	reg [3:0] trakdata;
@@ -321,8 +299,8 @@ always @(posedge clk_sys) begin
 	
 	old_mstate <= ps2_mouse[24];
 	if(old_mstate != ps2_mouse[24]) begin
-		if(!(^mposx[11:10])) mposx <= mposx + {{4{ps2_mouse[4]}}, ps2_mouse[15:8]};
-		if(!(^mposy[11:10])) mposy <= mposy + {{4{ps2_mouse[5]}}, ps2_mouse[23:16]};
+		if(!(^mposx[11:10])) mposx <= mposx + {{4{ps2_mouse[4] ^ flip}}, ps2_mouse[15:8]};
+		if(!(^mposy[11:10])) mposy <= mposy + {{4{ps2_mouse[5] ^ flip}}, ps2_mouse[23:16]};
 	end
 	
 	if(mposx != 0) begin
@@ -358,10 +336,10 @@ wire clk_6_o;
    // game & cpu
    centipede uut(
 		 .clk_12mhz(clk_12),
-		 .clk_100mhz(clk_100mhz),
  		 .reset(reset),
 		 .playerinput_i(playerinput_i),
 		 .trakball_i(trakball_i),
+		 .flip_o(flip),
 		 .joystick_i(joystick_i),
 		 .sw1_i(m_dip),
 		 .sw2_i(sw2_i),
@@ -371,7 +349,6 @@ wire clk_6_o;
 		 .dn_addr(ioctl_addr[15:0]),
 		 .dn_data(ioctl_dout),
 		 .dn_wr(ioctl_wr),
-	 
 		 
 		 .rgb_o(rgb),
 		 .sync_o(),
@@ -381,16 +358,6 @@ wire clk_6_o;
 		 .vblank_o(vblank),
 		 .clk_6mhz_o(clk_6_o)
 
-		 /*
-		 
-		 .rgb_o(cga_rgb),
-		 .sync_o(cga_csync),
-		 .hsync_o(cga_hsync),
-		 .vsync_o(cga_vsync),
-		 .hblank_o(cga_hblank),
-		 .vblank_o(cga_vblank),
-*/
 		 );
-
 
 endmodule

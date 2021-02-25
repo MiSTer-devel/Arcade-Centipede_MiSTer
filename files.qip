@@ -4,7 +4,7 @@ set_global_assignment -name VERILOG_FILE rtl/pf_ram_dp.v
 set_global_assignment -name VERILOG_FILE rtl/ram_dp256kx8.v
 set_global_assignment -name VERILOG_FILE rtl/ram_dp128kx8.v
 set_global_assignment -name VERILOG_FILE rtl/pf_ram.v
-set_global_assignment -name VERILOG_FILE rtl/p6502.v
+set_global_assignment -name QIP_FILE rtl/t65/t65.qip
 set_global_assignment -name VERILOG_FILE rtl/hs_ram.v
 set_global_assignment -name VERILOG_FILE rtl/ds_dac.v
 set_global_assignment -name VERILOG_FILE rtl/color_ram.v
