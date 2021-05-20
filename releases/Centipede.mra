@@ -1,21 +1,51 @@
 <misterromdescription>
-	<name>Centipede (revision 4)</name>
-	<mameversion>0220</mameversion>
-	<setname>centiped</setname>
-	<mratimestamp>20200430141713</mratimestamp>
+	<name>Centipede</name>
+	<region></region>
+	<homebrew>no</homebrew>
+	<bootleg>no</bootleg>
+	<version></version>
+	<alternative></alternative>
+	<platform></platform>
+	<series>*pede</series>
 	<year>1980</year>
 	<manufacturer>Atari</manufacturer>
-	<category>Maze / Bugs</category>
-	<category>Maze / Centipede</category>
-	<category>Maze / Spiders</category>
+	<category>Shooter - Gallery</category>
+
+	<setname>centiped</setname>
+	<parent>centiped</parent>
+	<mameversion>0219</mameversion>
 	<rbf>centipede</rbf>
-	<rom index="0" zip="centiped.zip" md5="92ab4507356aca0896d5c4138e82b9c4">
-		<part crc="c4d995eb" name="136001-407.d1"/>
-		<part crc="bcdebe1b" name="136001-408.e1"/>
-		<part crc="66d7b04a" name="136001-409.fh1"/>
-		<part crc="33ce4640" name="136001-410.j1"/>
-		<part crc="880acfb9" name="136001-211.f7"/>
-		<part crc="b1397029" name="136001-212.hj7"/>
-		<part crc="6fa3093a" name="136001-213.p4"/>
-	</rom>
+	<about></about>
+
+	<resolution>15kHz</resolution>
+	<rotation>vertical (ccw)</rotation>
+	<flip>no</flip>
+
+	<players>1</players>
+	<joystick></joystick>
+	<special_controls>trackball</special_controls>
+	<num_buttons>1</num_buttons>
+	<button_names></button_names>
+
+	<switches></switches>
+
+	<rom index="1"></rom>
+	<rom index="0" md5="62b368a2a08e930eae5b8d0db277c30f" zip="centiped.zip|centiped3.zip">
+		<part crc="5ab0d9de" name="136001-307.d1"></part>
+		<part crc="4c07fd3e" name="136001-308.e1"></part>
+		<part crc="ff69b424" name="136001-309.fh1"></part>
+		<part crc="44e40fa4" name="136001-310.j1"></part>
+		<part crc="880acfb9" name="136001-211.f7"></part>
+		<part crc="b1397029" name="136001-212.hj7"></part>
+		<part crc="6fa3093a" name="136001-213.p4"></part>
+		</rom>
+	<rom index="2"></rom>
+	<rom index="3"></rom>
+	<rom index="4"></rom>
+
+	<nvram></nvram>
+
+	<remark></remark>
+
+	<mratimestamp>20210430005030</mratimestamp>
 </misterromdescription>
