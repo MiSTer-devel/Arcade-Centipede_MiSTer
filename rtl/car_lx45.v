@@ -1,3 +1,4 @@
+`timescale 1 ps / 1 ps
 
 module car_lx45(
 		input  sysclk,

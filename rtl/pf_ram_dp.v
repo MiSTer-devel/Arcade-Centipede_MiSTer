@@ -4,6 +4,7 @@
 //  port a: r/w, 8 bit (i.e. only one enable asserted per cycle)
 //  port b: r/o, 32 bit (any enable honored)
 //
+`timescale 1 ps / 1 ps
 
 //`define simple
 `define old_style

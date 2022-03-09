@@ -4,7 +4,9 @@
 // Brad Parker <brad@heeltoe.com> 5/2014
 //
 
-`include "../pokey/pokey_atosm.v"
+`include "pokey_atosm.v"
+
+`timescale 1 ps / 1 ps
 
 module pokey(
 	     input 	  phi2,

@@ -11,6 +11,8 @@
 
 `define scan_convert
 
+`timescale 1 ps / 1 ps
+
 module cent_top(
 		     output [5:1] led,
 		     input 	  sysclk,

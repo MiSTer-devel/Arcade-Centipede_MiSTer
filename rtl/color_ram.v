@@ -2,6 +2,8 @@
 // dp ram 16x4
 //
 
+`timescale 1 ps / 1 ps
+
 module color_ram (input        clk_a,
 		  input        clk_b,
 		  input        reset,
