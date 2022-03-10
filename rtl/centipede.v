@@ -44,10 +44,10 @@ module centipede(
 
 		 // Hiscore
 
-		 input	 [5:0]	hs_address,
-		 input	 [7:0]	hs_data_in,
-		 output	 [7:0]	hs_data_out,
-		 input					hs_write
+		 input	[5:0]	hs_address,
+		 input	[7:0]	hs_data_in,
+		 output	[7:0]	hs_data_out,
+		 input			hs_write
 	);
 
 	 //
@@ -927,7 +927,7 @@ module centipede(
 		.wren_a(~earom_ctrl[1]), // c1
 
 		.clock_b(clk_12mhz),
-		.enable_b(hs_write),
+		.enable_b(1'b1),
 		.address_b(hs_address[5:0]),
 		.data_b(hs_data_in),
 		.q_b(hs_data_out),

@@ -238,6 +238,10 @@ begin
 						ioctl_upload_req <= 1'b0;
 						state <= SM_IDLE;
 					end
+				default:
+					begin
+
+					end
 			endcase
 		end
 		

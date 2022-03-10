@@ -43,7 +43,7 @@
 	<rom index="3"></rom>
 	<rom index="4"></rom>
 
-	<nvram></nvram>
+	<nvram index="4" size="64"/>
 
 	<remark></remark>
 
