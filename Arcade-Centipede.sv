@@ -202,12 +202,7 @@ localparam CONF_STR = {
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",  
 	"-;",
-	"O89,Lives,2,3,4,5;",
-	"OAB,Bonus,10000,12000,15000,20000;",
-	"OC,Cabinet,Upright,Cocktail;",
-	"OD,Test,No,Yes;",
-	"OEF,Language,English,German,French,Spanish;",
-	"OG,Difficulty,Easy,Hard;",
+	"DIP;",
 	"-;",
 	"OR,Autosave Hiscores,Off,On;",
 	"P1,Pause options;",
@@ -325,21 +320,27 @@ pause #(3,3,3,24) pause (
 	.b(rgb_in[8:6])
 );
 
+// DIPS
+
+reg [7:0] sw[8];
+always @(posedge clk_sys)
+begin
+	if (ioctl_wr && (ioctl_index==8'd254) && !ioctl_addr[24:3]) sw[ioctl_addr[2:0]] <= ioctl_dout;
+end
+
+// DISPLAY
 wire hblank, vblank;
 wire hs, vs;
 wire [8:0] rgb_in;
-
 reg ce_pix;
 always @(posedge clk_24) begin
 	reg [1:0] div;
 	div <= div + 1'd1;
 	ce_pix <= !div;
 end
-
 wire no_rotate = status[2] | direct_video ;
 wire rotate_ccw = 1;
 screen_rotate screen_rotate (.*);
-
 
 arcade_video #(256,9,1) arcade_video
 (
@@ -362,15 +363,13 @@ assign AUDIO_L = {audio,audio};
 assign AUDIO_R = AUDIO_L;
 assign AUDIO_S = 0;
 
+wire flip;
 wire [3:0] led_o;
 wire [7:0] trakball_i;
 wire [7:0] joystick_i;
 wire [7:0] sw1_i;
 wire [7:0] sw2_i;
 wire [9:0] playerinput_i;
-
-wire [7:0]m_dip = {   1'b0, ~status[16],status[11:10],status[9:8],status[15:14]};
-assign sw2_i = 8'h02;	// hardcoded for 1 coin 1 play
 
 // inputs: coin R, coin C, coin L, self test, cocktail, slam, start 2, start 1, fire 2, fire 1
 assign playerinput_i = { 1'b1, 1'b1, ~(m_coin), m_test, status[12], m_slam, ~(m_start2), ~(m_start1), ~m_fire_2, ~m_fire };
@@ -431,8 +430,8 @@ wire clk_6_o;
 		 .trakball_i(trakball_i),
 		 .flip_o(flip),
 		 .joystick_i(joystick_i),
-		 .sw1_i(m_dip),
-		 .sw2_i(sw2_i),
+		 .sw1_i(sw[0]),
+		 .sw2_i(sw[1]),
 		 .led_o(led_o),
 		 .audio_o(audio),
 
