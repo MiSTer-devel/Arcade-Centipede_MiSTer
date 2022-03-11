@@ -192,8 +192,8 @@ assign HDMI_FREEZE = 0;
 
 wire [1:0] ar = status[20:19];
 
-assign VIDEO_ARX = (!ar) ? (status[2]  ? 8'd4 : 8'd3) : (ar - 1'd1);
-assign VIDEO_ARY = (!ar) ? (status[2]  ? 8'd3 : 8'd4) : 12'd0;
+assign VIDEO_ARX = (!ar) ? (status[2]  ? 8'd16 : 8'd15) : (ar - 1'd1);
+assign VIDEO_ARY = (!ar) ? (status[2]  ? 8'd15 : 8'd16) : 12'd0;
 
 `include "build_id.v" 
 localparam CONF_STR = {
