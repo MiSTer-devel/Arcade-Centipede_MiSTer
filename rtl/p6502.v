@@ -1,5 +1,5 @@
-`include "6502/bc/bc6502.v"
-`include "6502/bc/addsub.v"
+`include "bc6502/bc6502.v"
+`include "bc6502/addsub.v"
 
 module p6502(
 	input			clk,
