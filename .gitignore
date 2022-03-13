@@ -38,3 +38,12 @@ c5_pin_model_dump.txt
 *.cdf
 *.qarlog
 qar_info.json
+
+verilator/.vs/*
+verilator/x64/*
+verilator/Release/*
+verilator/Debug/*
+verilator/obj_dir/*
+verilator/audio.wav
+verilator/roms/*
+*.vcd

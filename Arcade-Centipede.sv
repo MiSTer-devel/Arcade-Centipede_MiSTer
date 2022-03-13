@@ -29,7 +29,7 @@ module emu
 	input         RESET,
 
 	//Must be passed to hps_io module
-	inout  [45:0] HPS_BUS,
+	inout  [48:0] HPS_BUS,
 
 	//Base video clock. Usually equals to CLK_SYS.
 	output        CLK_VIDEO,
@@ -39,8 +39,9 @@ module emu
 	output        CE_PIXEL,
 
 	//Video aspect ratio for HDMI. Most retro systems have ratio 4:3.
-	output [11:0] VIDEO_ARX,
-	output [11:0] VIDEO_ARY,
+	//if VIDEO_ARX[12] or VIDEO_ARY[12] is set then [11:0] contains scaled size instead of aspect ratio.
+	output [12:0] VIDEO_ARX,
+	output [12:0] VIDEO_ARY,
 
 	output  [7:0] VGA_R,
 	output  [7:0] VGA_G,
@@ -54,14 +55,16 @@ module emu
 
 	input  [11:0] HDMI_WIDTH,
 	input  [11:0] HDMI_HEIGHT,
+	output        HDMI_FREEZE,
 
-	// Use framebuffer from DDRAM (USE_FB=1 in qsf)
+`ifdef MISTER_FB
+	// Use framebuffer in DDRAM (USE_FB=1 in qsf)
 	// FB_FORMAT:
 	//    [2:0] : 011=8bpp(palette) 100=16bpp 101=24bpp 110=32bpp
 	//    [3]   : 0=16bits 565 1=16bits 1555
 	//    [4]   : 0=RGB  1=BGR (for 16/24/32 modes)
 	//
-	// FB_STRIDE either 0 (rounded to 256 bytes) or multiple of 16 bytes.
+	// FB_STRIDE either 0 (rounded to 256 bytes) or multiple of pixel size (in bytes)
 	output        FB_EN,
 	output  [4:0] FB_FORMAT,
 	output [11:0] FB_WIDTH,
@@ -72,6 +75,7 @@ module emu
 	input         FB_LL,
 	output        FB_FORCE_BLANK,
 
+`ifdef MISTER_FB_PALETTE
 	// Palette control for 8bit modes.
 	// Ignored for other video modes.
 	output        FB_PAL_CLK,
@@ -79,6 +83,8 @@ module emu
 	output [23:0] FB_PAL_DOUT,
 	input  [23:0] FB_PAL_DIN,
 	output        FB_PAL_WR,
+`endif
+`endif
 
 	output        LED_USER,  // 1 - ON, 0 - OFF.
 
@@ -88,10 +94,26 @@ module emu
 	output  [1:0] LED_POWER,
 	output  [1:0] LED_DISK,
 
+	// I/O board button press simulation (active high)
+	// b[1]: user button
+	// b[0]: osd button
+	output  [1:0] BUTTONS,
+
 	input         CLK_AUDIO, // 24.576 MHz
 	output [15:0] AUDIO_L,
 	output [15:0] AUDIO_R,
-	output        AUDIO_S,    // 1 - signed audio samples, 0 - unsigned
+	output        AUDIO_S,   // 1 - signed audio samples, 0 - unsigned
+	output  [1:0] AUDIO_MIX, // 0 - no mix, 1 - 25%, 2 - 50%, 3 - 100% (mono)
+
+	//ADC
+	inout   [3:0] ADC_BUS,
+
+	//SD-SPI
+	output        SD_SCK,
+	output        SD_MOSI,
+	input         SD_MISO,
+	output        SD_CS,
+	input         SD_CD,
 
 	//High latency DDR3 RAM interface
 	//Use for non-critical time purposes
@@ -106,27 +128,72 @@ module emu
 	output  [7:0] DDRAM_BE,
 	output        DDRAM_WE,
 
+	//SDRAM interface with lower latency
+	output        SDRAM_CLK,
+	output        SDRAM_CKE,
+	output [12:0] SDRAM_A,
+	output  [1:0] SDRAM_BA,
+	inout  [15:0] SDRAM_DQ,
+	output        SDRAM_DQML,
+	output        SDRAM_DQMH,
+	output        SDRAM_nCS,
+	output        SDRAM_nCAS,
+	output        SDRAM_nRAS,
+	output        SDRAM_nWE,
+
+`ifdef MISTER_DUAL_SDRAM
+	//Secondary SDRAM
+	//Set all output SDRAM_* signals to Z ASAP if SDRAM2_EN is 0
+	input         SDRAM2_EN,
+	output        SDRAM2_CLK,
+	output [12:0] SDRAM2_A,
+	output  [1:0] SDRAM2_BA,
+	inout  [15:0] SDRAM2_DQ,
+	output        SDRAM2_nCS,
+	output        SDRAM2_nCAS,
+	output        SDRAM2_nRAS,
+	output        SDRAM2_nWE,
+`endif
+
+	input         UART_CTS,
+	output        UART_RTS,
+	input         UART_RXD,
+	output        UART_TXD,
+	output        UART_DTR,
+	input         UART_DSR,
+
 	// Open-drain User port.
 	// 0 - D+/RX
 	// 1 - D-/TX
 	// 2..6 - USR2..USR6
 	// Set USER_OUT to 1 to read from USER_IN.
 	input   [6:0] USER_IN,
-	output  [6:0] USER_OUT
+	output  [6:0] USER_OUT,
+
+	input         OSD_STATUS
 );
 
+///////// Default values for ports not used in this core /////////
+
+assign ADC_BUS  = 'Z;
+assign USER_OUT = '1;
+assign {UART_RTS, UART_TXD, UART_DTR} = 0;
+assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
+assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign VGA_F1    = 0;
-assign VGA_SCALER= 0;
-assign USER_OUT  = '1;
+assign VGA_SCALER =0;
+assign AUDIO_MIX = 0;
 assign LED_USER  = ioctl_download;
 assign LED_DISK  = 0;
 assign LED_POWER = 0;
-assign {FB_PAL_CLK, FB_FORCE_BLANK, FB_PAL_ADDR, FB_PAL_DOUT, FB_PAL_WR} = '0;
+assign BUTTONS = 0;
+assign FB_FORCE_BLANK = '0;
+assign HDMI_FREEZE = 0;
 
 wire [1:0] ar = status[20:19];
 
-assign VIDEO_ARX = (!ar) ? (status[2]  ? 8'd4 : 8'd3) : (ar - 1'd1);
-assign VIDEO_ARY = (!ar) ? (status[2]  ? 8'd3 : 8'd4) : 12'd0;
+assign VIDEO_ARX = (!ar) ? (status[2]  ? 8'd16 : 8'd15) : (ar - 1'd1);
+assign VIDEO_ARY = (!ar) ? (status[2]  ? 8'd15 : 8'd16) : 12'd0;
 
 `include "build_id.v" 
 localparam CONF_STR = {
@@ -135,36 +202,30 @@ localparam CONF_STR = {
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",  
 	"-;",
-	"O89,Lives,2,3,4,5;",
-	"OAB,Bonus,10000,12000,15000,20000;",
-	"OC,Cabinet,Upright,Cocktail;",
-	"OD,Test,No,Yes;",
-	"OEF,Language,English,German,French,Spanish;",
-	"OG,Difficulty,Easy,Hard;",
+	"DIP;",
 	"-;",
-
+	"OR,Autosave Hiscores,Off,On;",
+	"P1,Pause options;",
+	"P1OP,Pause when OSD is open,On,Off;",
+	"P1OQ,Dim video after 10s,On,Off;",
+	"-;",
 	"R0,Reset;",
-	"J1,Fire,Start 1P,Start 2P,Coin;",
-	"Jn,A,Start,Select,Right;",
+	"J1,Fire,Start 1P,Start 2P,Coin,Pause;",
+	"Jn,A,Start,Select,Right,L;",
 	"V,v",`BUILD_DATE
 };
-
-wire [7:0]m_dip = {   1'b0, ~status[16],status[11:10],status[9:8],status[15:14]};
-
 
 ////////////////////   CLOCKS   ///////////////////
 
 wire clk_sys=clk_12;
-wire clk_48;
 wire clk_24;
 wire clk_12;
-
 
 pll pll
 (
 	.refclk(CLK_50M),
 	.rst(0),
-	.outclk_0(clk_48),
+	.outclk_0(),
 	.outclk_1(clk_24),
 	.outclk_2(clk_12)
 	
@@ -175,12 +236,17 @@ pll pll
 wire [31:0] status;
 wire  [1:0] buttons;
 wire        forced_scandoubler;
+wire			video_rotated;
 wire        direct_video;
 
 wire        ioctl_download;
+wire        ioctl_upload;
+wire        ioctl_upload_req;
+wire  [7:0] ioctl_index;
 wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
+wire  [7:0] ioctl_din;
 
 wire [15:0] joystick_0, joystick_1;
 wire [15:0] joy = joystick_0 | joystick_1;
@@ -190,26 +256,29 @@ wire [24:0] ps2_mouse;
 wire [21:0] gamma_bus;
 
 
-hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
+hps_io #(.CONF_STR(CONF_STR)) hps_io
 (
 	.clk_sys(clk_sys),
 	.HPS_BUS(HPS_BUS),
 	.EXT_BUS(),
-
-	.conf_str(CONF_STR),
 
 	.buttons(buttons),
 	.status(status),
 	.status_menumask({direct_video}),
 
 	.forced_scandoubler(forced_scandoubler),
+	.video_rotated(video_rotated),
 	.gamma_bus(gamma_bus),
 	.direct_video(direct_video),
 
 	.ioctl_download(ioctl_download),
+	.ioctl_upload(ioctl_upload),
+	.ioctl_upload_req(ioctl_upload_req),
 	.ioctl_wr(ioctl_wr),
 	.ioctl_addr(ioctl_addr),
 	.ioctl_dout(ioctl_dout),
+	.ioctl_din(ioctl_din),
+	.ioctl_index(ioctl_index),
 
 	.joystick_0(joystick_0),
 	.joystick_1(joystick_1),
@@ -236,33 +305,49 @@ wire m_coin   = joy[7];
 
 wire m_test = ~status[13];
 wire m_slam = 1'b1;//generate Noise
+wire m_pause   = joy[8];
 
-wire hblank, vblank;
-wire hs, vs;
-wire [2:0] r,g;
-wire [2:0] b;
-//wire ce_vid = clk_6_o;
-wire [8:0] rgb;
+// PAUSE SYSTEM
+wire				pause_cpu;
+wire [8:0]		rgb_out;
+pause #(3,3,3,24) pause (
+	.*,
+	.user_button(m_pause),
+	.pause_request(hs_pause),
+	.options(~status[26:25]),
+	.r(rgb_in[2:0]),
+	.g(rgb_in[5:3]),
+	.b(rgb_in[8:6])
+);
 
-reg ce_pix;
-always @(posedge clk_24) begin
-        reg [1:0] div;
+// DIPS
 
-        div <= div + 1'd1;
-        ce_pix <= !div;
+reg [7:0] sw[8];
+always @(posedge clk_sys)
+begin
+	if (ioctl_wr && (ioctl_index==8'd254) && !ioctl_addr[24:3]) sw[ioctl_addr[2:0]] <= ioctl_dout;
 end
 
+// DISPLAY
+wire hblank, vblank;
+wire hs, vs;
+wire [8:0] rgb_in;
+reg ce_pix;
+always @(posedge clk_24) begin
+	reg [1:0] div;
+	div <= div + 1'd1;
+	ce_pix <= !div;
+end
 wire no_rotate = status[2] | direct_video ;
 wire rotate_ccw = 1;
 screen_rotate screen_rotate (.*);
-
 
 arcade_video #(256,9,1) arcade_video
 (
 	.*,
 
 	.clk_video(clk_24),
-	.RGB_in({rgb[2:0],rgb[5:3],rgb[8:6]}),
+	.RGB_in(rgb_out),
 	.HBlank(hblank),
 	.VBlank(vblank),
 	.HSync(hs),
@@ -273,27 +358,26 @@ arcade_video #(256,9,1) arcade_video
 );
 
 
-   wire [7:0] audio;
-   assign AUDIO_L = {audio,audio};
-   assign AUDIO_R = AUDIO_L;
-   assign AUDIO_S = 0;
+wire [7:0] audio;
+assign AUDIO_L = {audio,audio};
+assign AUDIO_R = AUDIO_L;
+assign AUDIO_S = 0;
 
-   wire [3:0] led_o;
-   wire [7:0] trakball_i;
-   wire [7:0] joystick_i;
-   wire [7:0] sw1_i;
-   wire [7:0] sw2_i;
-   wire [9:0] playerinput_i;
-
-   assign sw2_i = 8'h02;	// hardcoded for 1 coin 1 play
+wire flip;
+wire [3:0] led_o;
+wire [7:0] trakball_i;
+wire [7:0] joystick_i;
+wire [7:0] sw1_i;
+wire [7:0] sw2_i;
+wire [9:0] playerinput_i;
 
 // inputs: coin R, coin C, coin L, self test, cocktail, slam, start 2, start 1, fire 2, fire 1
-   assign playerinput_i = { 1'b1, 1'b1, ~(m_coin), m_test, status[12], m_slam, ~(m_start2), ~(m_start1), ~m_fire_2, ~m_fire };
+assign playerinput_i = { 1'b1, 1'b1, ~(m_coin), m_test, status[12], m_slam, ~(m_start2), ~(m_start1), ~m_fire_2, ~m_fire };
 
-   assign joystick_i = { ~m_right,~m_left,~m_down,~m_up, ~m_right_2,~m_left_2,~m_down_2,~m_up_2};
+assign joystick_i = { ~m_right,~m_left,~m_down,~m_up, ~m_right_2,~m_left_2,~m_down_2,~m_up_2};
 
-   assign trakball_i = {trakdata[3],trakdata[3],trakdata[2],trakdata[2],trakdata[1],trakdata[1],trakdata[0],trakdata[0]};
-	reg [3:0] trakdata;
+assign trakball_i = {trakdata[3],trakdata[3],trakdata[2],trakdata[2],trakdata[1],trakdata[1],trakdata[0],trakdata[0]};
+reg [3:0] trakdata;
 
 // Trackball movement
 always @(posedge clk_sys) begin
@@ -333,10 +417,11 @@ always @(posedge clk_sys) begin
 end
 
 
-	wire reset;
-assign reset = (RESET | status[0] | buttons[1] | ioctl_download);
+wire rom_download = ioctl_download & !ioctl_index;
+wire nvram_download = ioctl_download & ioctl_index == 8'd4;
+wire reset = (RESET | status[0] | buttons[1] | rom_download);
 wire clk_6_o;
-	
+
    // game & cpu
    centipede uut(
 		 .clk_12mhz(clk_12),
@@ -345,23 +430,50 @@ wire clk_6_o;
 		 .trakball_i(trakball_i),
 		 .flip_o(flip),
 		 .joystick_i(joystick_i),
-		 .sw1_i(m_dip),
-		 .sw2_i(sw2_i),
+		 .sw1_i(sw[0]),
+		 .sw2_i(sw[1]),
 		 .led_o(led_o),
 		 .audio_o(audio),
 
 		 .dn_addr(ioctl_addr[15:0]),
 		 .dn_data(ioctl_dout),
-		 .dn_wr(ioctl_wr),
+		 .dn_wr(ioctl_wr & rom_download),
 		 
-		 .rgb_o(rgb),
+		 .rgb_o(rgb_in),
 		 .sync_o(),
 		 .hsync_o(hs),
 		 .vsync_o(vs),
 		 .hblank_o(hblank),
 		 .vblank_o(vblank),
-		 .clk_6mhz_o(clk_6_o)
+		 .clk_6mhz_o(clk_6_o),
+
+		.pause(pause_cpu),
+
+		.hs_address(ioctl_download ? ioctl_addr[5:0] : hs_address),
+		.hs_data_out(hs_data_out),
+		.hs_data_in(ioctl_dout),
+		.hs_write(ioctl_wr & nvram_download)
 
 		 );
+
+// HISCORE SYSTEM
+// --------------
+wire [5:0] hs_address;
+wire [7:0] hs_data_out;
+wire hs_pause;
+
+nvram #(
+	.DUMPWIDTH(6),
+	.DUMPINDEX(4),
+	.PAUSEPAD(2)
+) hi (
+	.*,
+	.clk(clk_sys),
+	.paused(pause_cpu),
+	.autosave(status[27]),
+	.nvram_address(hs_address),
+	.nvram_data_out(hs_data_out),
+	.pause_cpu(hs_pause)
+);
 
 endmodule

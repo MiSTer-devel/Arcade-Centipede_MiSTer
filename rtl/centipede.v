@@ -15,321 +15,326 @@
 // do some debugging of the pokey code I was using.
 //
 
+`timescale 1 ps / 1 ps
 	
 module centipede(
-		 input 	       clk_12mhz,
- 		 input 	       reset,
-		 input [9:0]   playerinput_i,
-		 input [7:0]   trakball_i,
-		 output		   flip_o,
-		 input [7:0]   joystick_i,
-		 input [7:0]   sw1_i,
-		 input [7:0]   sw2_i,
- 	     input  [15:0] dn_addr,
-		 input  [7:0]  dn_data,
-		 input		   dn_wr,
-	     output [4:1]  led_o,
-		 output [8:0]  rgb_o,
-		 output        sync_o,
-		 output        hsync_o,
-		 output        vsync_o,
-		 output        hblank_o,
-		 output        vblank_o,
-		 output [7:0]  audio_o,
-		 output	       clk_6mhz_o
-		 );
+		input         clk_12mhz,
+		input         reset,
+		input         pause,
+		input [9:0]   playerinput_i,
+		input [7:0]   trakball_i,
+		output        flip_o,
+		input [7:0]   joystick_i,
+		input [7:0]   sw1_i,
+		input [7:0]   sw2_i,
+		input  [15:0] dn_addr,
+		input  [7:0]  dn_data,
+		input					dn_wr,
+		input 				v_flip,
+		input 				h_flip,
+		output [4:1]  led_o,
+		output [8:0]  rgb_o,
+		output        sync_o,
+		output        hsync_o,
+		output        vsync_o,
+		output        hblank_o,
+		output        vblank_o,
+		output [7:0]  audio_o,
+		output        clk_6mhz_o,
 
-   //
-   wire s_12mhz, s_12mhz_n;
-   wire s_6mhz, s_6mhz_n;
+		 // Hiscore
 
-   wire phi0, phi2;
-   reg 	phi0a, phi0a_temp;
+		 input	[5:0]	hs_address,
+		 input	[7:0]	hs_data_in,
+		 output	[7:0]	hs_data_out,
+		 input			hs_write
+	);
 
-   //
-   wire rom_n;
-   wire ram0_n;
-   wire steerclr_n, watchdog_n, out0_n, irqres_n;
-   wire pokey_n, swrd_n, pf_n;
-   wire coloram_n, ea_read_n, ea_ctrl_n, ea_addr_n;
-   wire in0_n, in1_n;
+	 //
+	 wire s_12mhz, s_12mhz_n;
+	 wire s_6mhz, s_6mhz_n;
 
-   wire pframrd_n;
-   wire pfwr3_n, pfwr2_n, pfwr1_n, pfwr0_n;
-   wire pfrd3_n, pfrd2_n, pfrd1_n, pfrd0_n;
+	 wire phi0, phi2;
+	 reg 	phi0a, phi0a_temp;
 
-   wire [9:0] adecode;
-   wire       pac_n;
+	 //
+	 wire rom_n;
+	 wire ram0_n;
+	 wire steerclr_n, watchdog_n, out0_n, irqres_n;
+	 wire pokey_n, swrd_n, pf_n;
+	 wire coloram_n, ea_read_n, ea_ctrl_n, ea_addr_n;
+	 wire in0_n, in1_n;
 
-   wire       mpu_clk;
-   reg [7:0]  mpu_reset_cntr;
-   reg 	      mpu_reset;
-   wire       mpu_reset_n;
-   reg 	      irq;
-   wire       rw_n;
+	 wire pframrd_n;
+	 wire pfwr3_n, pfwr2_n, pfwr1_n, pfwr0_n;
+	 wire pfrd3_n, pfrd2_n, pfrd1_n, pfrd0_n;
 
-   wire [15:0] ab;
-   
-   wire [7:0] db_in;
-   wire [7:0] db_out;
+	 wire [9:0] adecode;
+	 wire       pac_n;
 
-   wire [7:0] ram_out;
-   wire [7:0] rom_out;
-   
-   //
-   wire [7:0] vprom_addr;
-   wire [3:0] vprom_out;
-   reg [3:0]  vprom_reg;
-   
-   wire       vsync, vblank, hblank, vreset;
-   reg 	      hsync;
-   wire       vsync_n, hsync_n, vblank_n, hblank_n, vreset_n;
-   wire       hsync_reset;
-   
-   wire       s_1h, s_2h, s_4h, s_8h, s_16h, s_32h, s_64h, s_128h, s_256h;
-   wire       s_1v, s_2v, s_4v, s_8v, s_16v, s_32v, s_64v, s_128v;
+	 wire       mpu_clk;
+	 reg [7:0]  mpu_reset_cntr;
+	 reg 	      mpu_reset;
+	 wire       mpu_reset_n;
+	 reg 	      irq;
+	 wire       rw_n;
 
-   wire       s_4h_n, s_8h_n, s_256h_n;
-   wire       s_256hd_n;
-   wire       s_256h2d_n;
-   wire	      vblankd_n;
-   wire       s_6_12;
-   
-   reg 	      s_256h2d;
-   reg 	      s_256hd;
-   reg 	      vblankd;
-   
-   wire       pload_n;
-   wire       write_n;
-   wire       brw_n;
-   
-   wire [15:0] pdf;
+	 wire [15:0] ab;
+	 
+	 wire [7:0] db_in;
+	 wire [7:0] db_out;
 
-   //
-   wire [7:0]  match_line;
-   wire [7:0]  match_sum;
-   wire        match_sum_top;
-   reg [5:0]   match_sum_hold;
-	       
-   wire [3:0]  match_mux;
-   wire        match_n;
-   wire        match_true;
-   wire [3:0]  mga;
+	 wire [7:0] ram_out;
+	 wire [7:0] rom_out;
+	 
+	 //
+	 wire [7:0] vprom_addr;
+	 wire [3:0] vprom_out;
+	 reg [3:0]  vprom_reg;
+	 
+	 wire       vsync, vblank, hblank, vreset;
+	 reg 	      hsync;
+	 wire       vsync_n, hsync_n, vblank_n, hblank_n, vreset_n;
+	 wire       hsync_reset;
+	 
+	 wire       s_1h, s_2h, s_4h, s_8h, s_16h, s_32h, s_64h, s_128h, s_256h;
+	 wire       s_1v, s_2v, s_4v, s_8v, s_16v, s_32v, s_64v, s_128v;
 
-   //
-   wire [7:0]  pf;
-   wire [1:0]  pf_sel;
-   wire [3:0]  pfa7654, pfa3210;
-   wire [7:0]  pfa;
-   wire [7:0]  pf_out;
-   wire        pf_addr_stamp;
+	 wire       s_4h_n, s_8h_n, s_256h_n;
+	 wire       s_256hd_n;
+	 wire       s_256h2d_n;
+	 wire	      vblankd_n;
+	 wire       s_6_12;
+	 
+	 reg 	      s_256h2d;
+	 reg 	      s_256hd;
+	 reg 	      vblankd;
+	 
+	 wire       pload_n;
+	 wire       write_n;
+	 wire       brw_n;
+	 
+	 wire [15:0] pdf;
 
-   wire [31:0] pfd;
-   reg [29:16] pfd_hold;
-   reg [29:16] pfd_hold2;
+	 //
+	 wire [7:0]  match_line;
+	 wire [7:0]  match_sum;
+	 wire        match_sum_top;
+	 reg [5:0]   match_sum_hold;
+				 
+	 wire [3:0]  match_mux;
+	 wire        match_n;
+	 wire        match_true;
+	 wire [3:0]  mga;
 
-   reg [1:0]   gry;
-   wire [1:0]  y;
-   reg [1:0]   mr;
-   
-   wire [7:0]  line_ram_addr;
-   reg [1:0]   line_ram[0:255];
-   reg [7:0]   line_ram_ctr;
-   wire        line_ram_ctr_load;
-   wire        line_ram_ctr_clr;
+	 //
+	 wire [7:0]  pf;
+	 wire [1:0]  pf_sel;
+	 wire [3:0]  pfa7654, pfa3210;
+	 wire [7:0]  pfa;
+	 wire [7:0]  pf_out;
+	 wire        pf_addr_stamp;
 
-   //
-   wire [7:0]  pf_mux1, pf_mux0;
-   reg [7:0]   pf_shift1, pf_shift0;
-   reg [1:0]   area;
+	 wire [31:0] pfd;
+	 reg [29:16] pfd_hold;
+	 reg [29:16] pfd_hold2;
 
-   wire [10:0] pf_rom1_addr, pf_rom0_addr;
-   wire [7:0]  pf_rom1_out, pf_rom0_out;
-   wire [7:0]  pf_rom1_out_rev, pf_rom0_out_rev;
+	 reg [1:0]   gry;
+	 wire [1:0]  y;
+	 reg [1:0]   mr;
+	 
+	 wire [7:0]  line_ram_addr;
+	 reg [1:0]   line_ram[0:255];
+	 reg [7:0]   line_ram_ctr;
+	 wire        line_ram_ctr_load;
+	 wire        line_ram_ctr_clr;
 
-   reg [7:0]   pic;
+	 //
+	 wire [7:0]  pf_mux1, pf_mux0;
+	 reg [7:0]   pf_shift1, pf_shift0;
+	 reg [1:0]   area;
 
+	 wire [10:0] pf_rom1_addr, pf_rom0_addr;
+	 wire [7:0]  pf_rom1_out_raw, pf_rom0_out_raw;
+	 wire [7:0]  pf_rom1_out, pf_rom0_out;
+	 wire [7:0]  pf_rom1_out_rev, pf_rom0_out_rev;
 
-   //
-   wire        ea_addr_clk, ea_ctrl_clk;
-   reg [5:0]   hs_addr;
-   wire [7:0]  hs_out;
-   reg [7:0]   hs_data;
-   reg [3:0]   hs_ctrl;
+	 reg [7:0]   pic;
 
-   reg 	       hs;
-   wire        hs_set;
+	 
+	 reg 	       hs;
+	 wire        hs_set;
+	 //
+	 wire        comp_sync;
+	 reg [3:0]   rgbi;
+	 wire [3:0]  coloram_out;
+	 wire [3:0]  coloram_rgbi;
+	 wire        coloram_w_n;
+	 reg 	       coloren, coloren_temp;
 
-   wire        hs_addr_clk;
-   wire        hs_ctrl_clk;
+	 wire [1:0]  rama_sel;
+	 wire [1:0]  rama_hi;
+	 wire [1:0]  rama_lo;
+	 wire [3:0]  rama;
 
-   //
-   wire        comp_sync;
-   reg [3:0]   rgbi;
-   wire [3:0]  coloram_out;
-   wire [3:0]  coloram_rgbi;
-   wire        coloram_w_n;
-   reg 	       coloren, coloren_temp;
+	 wire [5:0]  audio;
 
-   wire [1:0]  rama_sel;
-   wire [1:0]  rama_hi;
-   wire [1:0]  rama_lo;
-   wire [3:0]  rama;
+	 //
+	 wire        mob_n;
+	 wire        blank_clk;
 
-   wire [5:0]  audio;
+	 //
+	 wire [7:0]  joystick_out;
+	 wire [3:0]  tra, trb;
+	 wire        dir1, dir2;
 
-   //
-   wire        mob_n;
-   wire        blank_clk;
+	 wire [7:0]  switch_out;
+	 wire        flip;
 
-   //
-   wire [7:0]  joystick_out;
-   wire [3:0]  tra, trb;
-   wire        dir1, dir2;
+	 wire        coin_ctr_r_drive, coin_ctr_c_drive, coin_ctr_l_drive;
+	 wire [7:0]  playerin_out;
 
-   wire [7:0]  switch_out;
-   wire        flip;
-
-   wire        coin_ctr_r_drive, coin_ctr_c_drive, coin_ctr_l_drive;
-   wire [7:0]  playerin_out;
-
-   wire [7:0]  pokey_out;
-   wire [3:0] pokey_ch0, pokey_ch1, pokey_ch2, pokey_ch3; 
+	 wire [7:0]  pokey_out;
+	 wire [3:0] pokey_ch0, pokey_ch1, pokey_ch2, pokey_ch3; 
  
-   // ------------------------------------------------------------------------
+	 // ------------------------------------------------------------------------
 
-   // Synchronizer
-   reg [11:0]  h_counter;
-   reg [7:0]   v_counter;
-   wire        v_counter_reset;
-  
-   always @(posedge s_12mhz or posedge reset)
-     if (reset)
-       h_counter <= 12'b1101_0000_0000;
-     else
-       if (h_counter == 12'hfff)
+	 // Synchronizer
+	 reg [11:0]  h_counter;
+	 reg [7:0]   v_counter;
+	 wire        v_counter_reset;
+	
+	 always @(posedge s_12mhz or posedge reset)
+		 if (reset)
+			 h_counter <= 12'b1101_0000_0000;
+		 else
+			 if (h_counter == 12'hfff)
 	 h_counter <= 12'b1101_0000_0000;
-       else
+			 else
 	 h_counter <= h_counter + 12'd1;
 
-   assign s_6mhz = h_counter[0];
-   assign s_1h   = h_counter[1];
-   assign s_2h   = h_counter[2];
-   assign s_4h   = h_counter[3];
-   assign s_8h   = h_counter[4];
-   assign s_16h  = h_counter[5];
-   assign s_32h  = h_counter[6];
-   assign s_64h  = h_counter[7];
-   assign s_128h = h_counter[8];
-   assign s_256h = h_counter[9];
+	 assign s_6mhz = h_counter[0];
+	 assign s_1h   = h_counter[1];
+	 assign s_2h   = h_counter[2];
+	 assign s_4h   = h_counter[3];
+	 assign s_8h   = h_counter[4];
+	 assign s_16h  = h_counter[5];
+	 assign s_32h  = h_counter[6];
+	 assign s_64h  = h_counter[7];
+	 assign s_128h = h_counter[8];
+	 assign s_256h = h_counter[9];
 
-   assign s_4h_n = ~s_4h;
-   assign s_8h_n = ~s_8h;
-   assign s_256h_n = ~s_256h;
+	 assign s_4h_n = ~s_4h;
+	 assign s_8h_n = ~s_8h;
+	 assign s_256h_n = ~s_256h;
 
-   assign pload_n = ~(s_1h & s_2h & s_4h);
+	 assign pload_n = ~(s_1h & s_2h & s_4h);
 
-   assign s_12mhz = clk_12mhz;
-   assign s_12mhz_n = ~clk_12mhz;
-   assign s_6mhz_n = ~s_6mhz;
+	 assign s_12mhz = clk_12mhz;
+	 assign s_12mhz_n = ~clk_12mhz;
+	 assign s_6mhz_n = ~s_6mhz;
 
-   assign v_counter_reset = reset | vreset_n == 0;
+	 assign v_counter_reset = reset | vreset_n == 0;
 
-   always @(posedge s_256h_n or posedge reset)
-     if (reset)
-       v_counter <= 0;
-     else
-       /* ld# is on positive clock edge */
-       if (vreset_n == 0)
+	 always @(posedge s_256h_n or posedge reset)
+		 if (reset)
+			 v_counter <= 0;
+		 else
+			 /* ld# is on positive clock edge */
+			 if (vreset_n == 0)
 	 v_counter <= 0;
-       else
+			 else
 	 v_counter <= v_counter + 8'd1;
-   
-   assign s_1v   = v_counter[0];
-   assign s_2v   = v_counter[1];
-   assign s_4v   = v_counter[2];
-   assign s_8v   = v_counter[3];
-   assign s_16v  = v_counter[4];
-   assign s_32v  = v_counter[5];
-   assign s_64v  = v_counter[6];
-   assign s_128v = v_counter[7];
+	 
+	 assign s_1v   = v_counter[0];
+	 assign s_2v   = v_counter[1];
+	 assign s_4v   = v_counter[2];
+	 assign s_8v   = v_counter[3];
+	 assign s_16v  = v_counter[4];
+	 assign s_32v  = v_counter[5];
+	 assign s_64v  = v_counter[6];
+	 assign s_128v = v_counter[7];
 
-   assign vprom_addr = {vblank, s_128v, s_64v, s_32v, s_8v, s_4v, s_2v, s_1v};
+	 assign vprom_addr = {vblank, s_128v, s_64v, s_32v, s_8v, s_4v, s_2v, s_1v};
 
 	wire [3:0] scrap;
 
 	dpram #(8) vprom
-   (
-        .clock_a(clk_12mhz),
-        .wren_a(dn_wr & prom_cs),
-        .address_a(dn_addr[7:0]),
-        .data_a(dn_data),
+	 (
+				.clock_a(clk_12mhz),
+				.enable_a(1'b1),
+				.wren_a(dn_wr & prom_cs),
+				.address_a(dn_addr[7:0]),
+				.data_a(dn_data),
+				.q_a(),
 
-	     //.enable_b(~rom_n),
-        .clock_b(s_6mhz),
-        .address_b(vprom_addr),
-        .q_b({scrap,vprom_out})
-   );
-   always @(posedge s_256h_n or posedge reset)
-     if (reset)
-       vprom_reg <= 0;
-     else
-       vprom_reg <= vprom_out;
+				.clock_b(clk_12mhz),
+				.enable_b(s_6mhz),
+				.address_b(vprom_addr),
+				.wren_b(),
+				.data_b(),
+				.q_b({scrap,vprom_out})
+	 );
+	 always @(posedge s_256h_n or posedge reset)
+		 if (reset)
+			 vprom_reg <= 0;
+		 else
+			 vprom_reg <= vprom_out;
 
-   assign vsync = vprom_reg[0];
-   assign vsync_n = ~vprom_reg[0];
+	 assign vsync = vprom_reg[0];
+	 assign vsync_n = ~vprom_reg[0];
 
-   assign vreset = vprom_reg[2];
-   assign vreset_n = ~vprom_reg[2];
+	 assign vreset = vprom_reg[2];
+	 assign vreset_n = ~vprom_reg[2];
 
-   assign vblank = vprom_reg[3];
-   assign vblank_n = ~vprom_reg[3];
+	 assign vblank = vprom_reg[3];
+	 assign vblank_n = ~vprom_reg[3];
 
-   //
-   assign hs_set = reset | ~s_256h_n;
-   
-   always @(posedge s_32h or posedge hs_set)
-     if (hs_set)
-       hs <= 1;
-     else
-       hs <= s_64h;
+	 //
+	 assign hs_set = reset | ~s_256h_n;
+	 
+	 always @(posedge s_32h or posedge hs_set)
+		 if (hs_set)
+			 hs <= 1;
+		 else
+			 hs <= s_64h;
 
-   assign hsync_reset = reset | hs;
-   
-   always @(posedge s_8h or posedge hsync_reset)
-     if (hsync_reset)
-       hsync <= 0;
-     else
-       hsync <= s_32h;
+	 assign hsync_reset = reset | hs;
+	 
+	 always @(posedge s_8h or posedge hsync_reset)
+		 if (hsync_reset)
+			 hsync <= 0;
+		 else
+			 hsync <= s_32h;
 
-   assign hsync_n = ~hsync;
+	 assign hsync_n = ~hsync;
 
-   //
-   always @(posedge s_6mhz)
-     if (reset)
-       coloren_temp <= 0;
-     else
-       coloren_temp <= s_256hd;
+	 //
+	 always @(posedge s_6mhz)
+		 if (reset)
+			 coloren_temp <= 0;
+		 else
+			 coloren_temp <= s_256hd;
 
 	always @(negedge s_6mhz)
-     if (reset)
-       coloren <= 0;
-     else
-       coloren <= coloren_temp;
+		 if (reset)
+			 coloren <= 0;
+		 else
+			 coloren <= coloren_temp;
 
-   assign s_6_12 = ~(s_6mhz & s_12mhz);
+	 assign s_6_12 = ~(s_6mhz & s_12mhz);
 
-   reg xxx1;
-   
-   always @(posedge s_6_12)
-     if (reset)
-       xxx1 <= 0;
-     else
-       xxx1 <= coloren;
+	 reg xxx1;
+	 
+	 always @(posedge s_6_12)
+		 if (reset)
+			 xxx1 <= 0;
+		 else
+			 xxx1 <= coloren;
 
-   assign hblank_n = ~(~xxx1 & ~coloren);
+	 assign hblank_n = ~(~xxx1 & ~coloren);
 
-   assign hblank = ~hblank_n;
+	 assign hblank = ~hblank_n;
 
 	/*
 		136001-407.d1	2048	0		0000 0000 00000000 prog_rom_1
@@ -340,228 +345,247 @@ module centipede(
 	136001-212.hj7	2048	10240		0010 1000 00000000 prog pf_rom_1
 	136001-213.p4	256	12288		0011 0000 00000000 prom_cs
 	*/
+
+	// ROM upload enables
 	wire prog_rom_1_cs = (dn_addr[13] == 1'b0);
 	wire prog_pf_rom_0_cs = (dn_addr[13:11]==3'b100);
-    wire prog_pf_rom_1_cs = (dn_addr[13:11]==3'b101);
-    wire prom_cs = (dn_addr[13:8]==6'b110000);
+	wire prog_pf_rom_1_cs = (dn_addr[13:11]==3'b101);
+	wire prom_cs = (dn_addr[13:8]==6'b110000);
 
+	// Program ROM
 	dpram #(13) rom
-  (
-        .clock_a(clk_12mhz),
-        .wren_a(dn_wr & prog_rom_1_cs),
-        .address_a(dn_addr[12:0]),
-        .data_a(dn_data),
+	(
+		.clock_a(clk_12mhz),
+		.enable_a(1'b1),
+		.wren_a(dn_wr & prog_rom_1_cs),
+		.address_a(dn_addr[12:0]),
+		.data_a(dn_data),
+		.q_a(),
 
-        .clock_b(s_6mhz),
-        .address_b(ab[12:0]),
-        .q_b(rom_out[7:0])
-   );
+		.clock_b(clk_12mhz),
+		.enable_b(s_6mhz),
+		.address_b(ab[12:0]),
+		.wren_b(),
+		.data_b(),
+		.q_b(rom_out)
+	);
 
-   // cpu ram & rom
+	// CPU RAM
+		spram #(10,8) ram(
+			.clock(clk_12mhz),
+			.enable(s_6mhz && !ram0_n),
+			.address(ab[9:0]),
+			.data(db_out),
+			.q(ram_out),
+			.wren(~write_n)
+	);
 
-   ram ram(.clk(s_6mhz),
-	   .reset(reset),
-	   .a(ab[9:0]),
-	   .din(db_out[7:0]),
-	   .dout(ram_out[7:0]),
-	   .cs_n(ram0_n),
-   	   .we_n(write_n));
+	 wire        irq_n;
+	 
+	 always @(posedge s_16v or negedge irqres_n)
+		 if (~irqres_n)
+			 irq <= 1'b1;
+		 else
+			 irq <= ~s_32v;
 
-   
-   //
-   wire        irq_n;
-   
-   always @(posedge s_16v or negedge irqres_n)
-     if (~irqres_n)
-       irq <= 1'b1;
-     else
-       irq <= ~s_32v;
+	assign irq_n = irq;
 
-   assign irq_n = irq;
-   
-   
-   always @(posedge s_1h)
-     if (reset)
-       phi0a_temp <= 1'b0;
-     else
-       case ({(pf_n | s_4h), s_2h})
-	 2'b00: phi0a_temp <= phi0a_temp;
-	 2'b01: phi0a_temp <= 1'b0;
-	 2'b10: phi0a_temp <= 1'b1;
-	 2'b11: phi0a_temp <= ~phi0a_temp;
-       endcase
+	always @(posedge s_1h)
+		if (reset)
+			phi0a_temp <= 1'b0;
+		else
+			case ({(pf_n | s_4h), s_2h})
+			2'b00: phi0a_temp <= phi0a_temp;
+			2'b01: phi0a_temp <= 1'b0;
+			2'b10: phi0a_temp <= 1'b1;
+			2'b11: phi0a_temp <= ~phi0a_temp;
+			endcase
 
 	always @(negedge s_1h)
 		if (reset)
 			phi0a <= 1'b0;
 		else
 			phi0a <= phi0a_temp;
-   
-   assign phi0 = ~phi0a;
+
+	assign phi0 = ~phi0a;
+
+	// watchdog?
+	always @(posedge s_12mhz)
+		if (reset)
+			begin
+				mpu_reset <= 1;
+				mpu_reset_cntr <= 0;
+			end
+		else
+			begin
+			if (mpu_reset_cntr != 8'h10)
+				mpu_reset_cntr <= mpu_reset_cntr + 8'd1;
+			else
+				mpu_reset <= 0;
+			end
+
+		assign mpu_clk = s_6mhz;
+		assign mpu_reset_n = ~mpu_reset;
+
+	//assign phi2 = ~phi0;
+	// T65 cpu(
+	// 	.mode(0),
+	// 	.res_n(mpu_reset_n),
+	// 	.enable(1),
+	// 	.clk(phi0),
+	// 	.rdy(~pause),
+	// 	.abort_n(1),
+	// 	.irq_n(irq_n),
+	// 	.nmi_n(1),
+	// 	.so_n(1),
+	// 	.r_w_n(rw_n),
+	// 	.a(ab),
+	// 	.di(db_in),
+	// 	.do(db_out)
+	// );
+	 p6502 p6502(
+				 .clk(mpu_clk),
+				 .reset_n(mpu_reset_n),
+				 .nmi(1'b1),
+				 .irq(irq_n),
+				 .so(1'b0),
+				 .rdy(~pause),
+				 .phi0(phi0),
+				 .phi2(phi2),
+				 .rw_n(rw_n),
+				 .a(ab),
+				 .din(db_in),
+				 .dout(db_out)
+				 );
 
 
-   // watchdog?
-   always @(posedge s_12mhz)
-     if (reset)
-       begin
-	  mpu_reset <= 1;
-	  mpu_reset_cntr <= 0;
-       end
-     else
-       begin
-	  if (mpu_reset_cntr != 8'h10)
-	    mpu_reset_cntr <= mpu_reset_cntr + 8'd1;
-	  else
-	    mpu_reset <= 0;
-       end
+	 // Address Decoder
+	 assign write_n = ~(phi2 & ~rw_n);
 
-    assign mpu_clk = s_6mhz;
-    assign mpu_reset_n = ~mpu_reset;
+	 assign brw_n = ~rw_n;
+	 
+	 assign rom_n = brw_n | ~ab[13];
 
-	assign phi2 = ~phi0;
+	 //   1111 11
+	 //   5432 1098 7654 3210
+	 //
+	 //   0010 xxxx xxxx xxxx  2000 rom_n
+	 //   0000 1100 0000 0000  0c00 
 
-	T65 cpu(
-		.mode(0),
-		.res_n(mpu_reset_n),
-		.enable(1),
-		.clk(phi0),
-		.rdy(1),
-		.abort_n(1),
-		.irq_n(irq_n),
-		.nmi_n(1),
-		.so_n(1),
-		.r_w_n(rw_n),
-		.a(ab),
-		.di(db_in),
-		.do(db_out)
-	);
+	 assign adecode =
+			 (ab[13:10] == 4'b0000) ? 10'b1111111110 :
+			 (ab[13:10] == 4'b0001) ? 10'b1111111101 :
+			 (ab[13:10] == 4'b0010) ? 10'b1111111011 :
+			 (ab[13:10] == 4'b0011) ? 10'b1111110111 :
+			 (ab[13:10] == 4'b0100) ? 10'b1111101111 :
+			 (ab[13:10] == 4'b0101) ? 10'b1111011111 :
+			 (ab[13:10] == 4'b0110) ? 10'b1110111111 :
+			 (ab[13:10] == 4'b0111) ? 10'b1101111111 :
+			 (ab[13:10] == 4'b1000) ? 10'b1011111111 :
+			 (ab[13:10] == 4'b1001) ? 10'b0111111111 :
+			 10'b1111111111;
 
+   wire write2_n = ~(s_6mhz & ~write_n);
+	//  reg write2_n;
+	//  always @(posedge s_6mhz)
+	// 	 if (reset)
+	// 		 write2_n <= 0;
+	// 	 else
+	// 		 write2_n <= write_n;
+	 
+	 assign steerclr_n = adecode[9] | write2_n;
+	 assign watchdog_n = adecode[8] | write2_n;
+	 assign out0_n =     adecode[7] | write2_n;
+	 assign irqres_n =  (adecode[6] | write2_n) & mpu_reset_n;
 
-   // Address Decoder
-   assign write_n = ~(phi2 & ~rw_n);
+	 assign coloram_n = (adecode[5] | ab[9]) /* | pac_n*/;
+	 
+	 assign pokey_n = adecode[4];
 
-   assign brw_n = ~rw_n;
-   
-   assign rom_n = brw_n | ~ab[13];
+	 assign in0_n =   adecode[3] | ab[1];
+	 assign in1_n =   adecode[3] | ~ab[1];
+	 
+	assign swrd_n =  adecode[2];
+	assign pf_n =    adecode[1];
+	assign ram0_n =  adecode[0];
+	
+	wire C5 = ~ab[9]|adecode[5];
 
-   //   1111 11
-   //   5432 1098 7654 3210
-   //
-   //   0010 xxxx xxxx xxxx  2000 rom_n
-   //   0000 1100 0000 0000  0c00 
-
-   assign adecode =
-		   (ab[13:10] == 4'b0000) ? 10'b1111111110 :
-		   (ab[13:10] == 4'b0001) ? 10'b1111111101 :
-		   (ab[13:10] == 4'b0010) ? 10'b1111111011 :
-		   (ab[13:10] == 4'b0011) ? 10'b1111110111 :
-		   (ab[13:10] == 4'b0100) ? 10'b1111101111 :
-		   (ab[13:10] == 4'b0101) ? 10'b1111011111 :
-		   (ab[13:10] == 4'b0110) ? 10'b1110111111 :
-		   (ab[13:10] == 4'b0111) ? 10'b1101111111 :
-		   (ab[13:10] == 4'b1000) ? 10'b1011111111 :
-		   (ab[13:10] == 4'b1001) ? 10'b0111111111 :
-		   10'b1111111111;
-
-//   assign write2_n = ~(s_6mhz & ~write_n);
-   reg write2_n;
-   always @(posedge s_6mhz)
-     if (reset)
-       write2_n <= 0;
-     else
-       write2_n <= write_n;
-   
-   assign steerclr_n = adecode[9] | write2_n;
-   assign watchdog_n = adecode[8] | write2_n;
-   assign out0_n =     adecode[7] | write2_n;
-   assign irqres_n =  (adecode[6] | write2_n) & mpu_reset_n;
-
-   assign coloram_n = (adecode[5] | ab[9]) /* | pac_n*/;
-   
-   assign pokey_n = adecode[4];
-
-   assign in0_n =   adecode[3] | ab[1];
-   assign in1_n =   adecode[3] | ~ab[1];
-   
-   assign swrd_n =  adecode[2];
-   assign pf_n =    adecode[1];
-   assign ram0_n =  adecode[0];
-   
-   assign {ea_read_n, ea_ctrl_n, ea_addr_n} =
-						({~ab[9]|adecode[5], ab[8:7]} == 3'b000) ? 3'b110 :
-						({~ab[9]|adecode[5], ab[8:7]} == 3'b001) ? 3'b101 :
-						({~ab[9]|adecode[5], ab[8:7]} == 3'b010) ? 3'b011 :
-						3'b111;
-   assign pframrd_n = pf_n | brw_n;
-   
-   assign {pfwr3_n, pfwr2_n, pfwr1_n, pfwr0_n} =
+	assign {ea_read_n, ea_ctrl_n, ea_addr_n} =
+					({C5, ab[8:7]} == 3'b000) ? 3'b110 :
+					({C5, ab[8:7]} == 3'b001) ? 3'b101 :
+					({C5, ab[8:7]} == 3'b010) ? 3'b011 :
+					3'b111;
+	 assign pframrd_n = pf_n | brw_n;
+	 
+	 assign {pfwr3_n, pfwr2_n, pfwr1_n, pfwr0_n} =
 					({pf_n, write_n, ab[5:4]} == 4'b0000) ? 4'b1110 :
 					({pf_n, write_n, ab[5:4]} == 4'b0001) ? 4'b1101 :
 					({pf_n, write_n, ab[5:4]} == 4'b0010) ? 4'b1011 :
 					({pf_n, write_n, ab[5:4]} == 4'b0011) ? 4'b0111 :
 					4'b1111;
 
-   assign {pfrd3_n, pfrd2_n, pfrd1_n, pfrd0_n} =
+	 assign {pfrd3_n, pfrd2_n, pfrd1_n, pfrd0_n} =
 						(ab[5:4] == 2'b00) ? 4'b1110 :
 						(ab[5:4] == 2'b01) ? 4'b1101 :
 						(ab[5:4] == 2'b10) ? 4'b1011 :
 						(ab[5:4] == 2'b11) ? 4'b0111 :
 						4'b1111;
 
-   //
-   assign mob_n = ~(s_256h_n & s_256hd) & ~(s_256h2d_n & s_256hd);
+	 //
+	 assign mob_n = ~(s_256h_n & s_256hd) & ~(s_256h2d_n & s_256hd);
 
-   assign blank_clk = ~s_12mhz & (h_counter[3:0] == 4'b1111);
+	 assign blank_clk = ~s_12mhz & (h_counter[3:0] == 4'b1111);
 
-   always @(posedge blank_clk or posedge reset)
-     if (reset)
-       begin
-	  s_256h2d <= 1'b0;
-	  s_256hd <= 1'b0;
-	  vblankd <= 1'b0;
-       end
-     else
-       begin
-	  s_256h2d <= s_256hd;
-	  s_256hd <= s_256h;
-	  vblankd <= vblank;
-       end
+	 always @(posedge blank_clk or posedge reset)
+		 if (reset)
+			 begin
+		s_256h2d <= 1'b0;
+		s_256hd <= 1'b0;
+		vblankd <= 1'b0;
+			 end
+		 else
+			 begin
+		s_256h2d <= s_256hd;
+		s_256hd <= s_256h;
+		vblankd <= vblank;
+			 end
 
-   assign s_256h2d_n = ~s_256h2d;
-   assign s_256hd_n = ~s_256hd;
-   assign vblankd_n = ~vblankd;
-   
-   // motion objects (vertical)
+	 assign s_256h2d_n = ~s_256h2d;
+	 assign s_256hd_n = ~s_256hd;
+	 assign vblankd_n = ~vblankd;
+	 
+	 // motion objects (vertical)
 
-   // the motion object circuitry (vertical) receives pf data and vertical inputs from the
-   // sync generator circuitry to generate the vertical component of the motion object video. PFD8-
-   // 15 from the playfield memory and 1v-128v from the sync generator are compared at F6 and H6.
-   // The output is gated by A7 when a motion object is on one of the sixteen vertical lines and is
-   // latched by E6 and AND gate B7.  A low on B7 pin 8 indicates the presence of a motion object on
-   // one of the vertical lines during non-active video time.  The signal (MATCH) enables the multi-
-   // plexers in the picture data circuitry.
-   //
-   // when 256h goes high, 1v,2v,4v and pic0 are selected. When 256h goes low,
-   // the latched output of E6 is selected. The output if D7 is EXCLUSIVE OR gated at E7 and is
-   // sent to the picture data selector circuitry as motion graphics address (MGA0-MGA3). The other
-   // input to EXCLUSIVE OR gate E7 is PIC7 from the playfield code multiplexer circuitry. PIC7
-   // when high causes the output of E7 to be complimented.  For example, if MGA0..3 are low,
-   // pic7 causes MGA0..3 to go high.  This causes the motion object video to be inverted top
-   // to bottom.
+	 // the motion object circuitry (vertical) receives pf data and vertical inputs from the
+	 // sync generator circuitry to generate the vertical component of the motion object video. PFD8-
+	 // 15 from the playfield memory and 1v-128v from the sync generator are compared at F6 and H6.
+	 // The output is gated by A7 when a motion object is on one of the sixteen vertical lines and is
+	 // latched by E6 and AND gate B7.  A low on B7 pin 8 indicates the presence of a motion object on
+	 // one of the vertical lines during non-active video time.  The signal (MATCH) enables the multi-
+	 // plexers in the picture data circuitry.
+	 //
+	 // when 256h goes high, 1v,2v,4v and pic0 are selected. When 256h goes low,
+	 // the latched output of E6 is selected. The output if D7 is EXCLUSIVE OR gated at E7 and is
+	 // sent to the picture data selector circuitry as motion graphics address (MGA0-MGA3). The other
+	 // input to EXCLUSIVE OR gate E7 is PIC7 from the playfield code multiplexer circuitry. PIC7
+	 // when high causes the output of E7 to be complimented.  For example, if MGA0..3 are low,
+	 // pic7 causes MGA0..3 to go high.  This causes the motion object video to be inverted top
+	 // to bottom.
 
-   // mga0..3 (motion graphics address) from the motion object circuitry,
-   //  256h and 256h_n from the sync generator
-   // pic0..5 represents the code for the object to be displayed
-   // mga0..3 set on of 8 different combinations of the 8-line by
-   //  8-bit blocks of picture video or the 16 line by 8 bit blocks of
-   //  motion object video
-   //
-   // 256h when high selects the playfield picture color codes to be addressed.
-   // 256h when low selects the motion object color codes to be addressed
+	 // mga0..3 (motion graphics address) from the motion object circuitry,
+	 //  256h and 256h_n from the sync generator
+	 // pic0..5 represents the code for the object to be displayed
+	 // mga0..3 set on of 8 different combinations of the 8-line by
+	 //  8-bit blocks of picture video or the 16 line by 8 bit blocks of
+	 //  motion object video
+	 //
+	 // 256h when high selects the playfield picture color codes to be addressed.
+	 // 256h when low selects the motion object color codes to be addressed
 
-   assign match_line = { s_128v, s_64v, s_32v, s_16v, s_8v, s_4v, s_2v, s_1v };
-   assign match_sum = match_line + pfd[15:8];
-   assign match_sum_top = ~(match_sum[7] & match_sum[6] & match_sum[5] & match_sum[4]);
+	 assign match_line = { s_128v, s_64v, s_32v, s_16v, s_8v, s_4v, s_2v, s_1v };
+	 assign match_sum = match_line + pfd[15:8];
+	 assign match_sum_top = ~(match_sum[7] & match_sum[6] & match_sum[5] & match_sum[4]);
 
 //   always @(posedge s_4h)
 //     if (reset)
@@ -569,30 +593,30 @@ module centipede(
 //     else
 //       match_sum_hold <= { match_sum_top, 1'b0, match_sum[3:0] };
 
-   always @(negedge s_6mhz)
-    if (reset)
-       match_sum_hold <= 0;
-     else
-       if (h_counter[3:1] == 3'b011)	// clock enable rising edge of s_4h
-       match_sum_hold <= { match_sum_top, 1'b0, match_sum[3:0] };
+	 always @(negedge s_6mhz)
+		if (reset)
+			 match_sum_hold <= 0;
+		 else
+			 if (h_counter[3:1] == 3'b011)	// clock enable rising edge of s_4h
+			 match_sum_hold <= { match_sum_top, 1'b0, match_sum[3:0] };
 
-   assign match_mux = s_256h ? { pic[0], s_4v, s_2v, s_1v } : match_sum_hold[3:0];
+	 assign match_mux = s_256h ? { pic[0], s_4v, s_2v, s_1v } : match_sum_hold[3:0];
 
-   assign match_n = match_sum_hold[5] & s_256h_n;
+	 assign match_n = match_sum_hold[5] & s_256h_n;
 
-   assign mga = { match_mux[3] ^ (pic[7] & s_256h_n),
-		  match_mux[2] ^ pic[7],
-		  match_mux[1] ^ pic[7],
-		  match_mux[0] ^ pic[7] };
-   
-   
-   // motion objects (horizontal)
+	 assign mga = { match_mux[3] ^ (pic[7] & s_256h_n),
+			match_mux[2] ^ pic[7],
+			match_mux[1] ^ pic[7],
+			match_mux[0] ^ pic[7] };
+	 
+	 
+	 // motion objects (horizontal)
 
-   // the motion object circuitry (horizontal) receives playfield data and horizontal inputs from
-   // the sync generator circuitry. pfd16..23 from the pf memory determine the horizontal
-   // position of the motion object.  pfd24..29 from the pf memory determine the indirect
-   // color of the motion object.   pfd16:23 are latched and loaded into the horizontal position
-   // counter.
+	 // the motion object circuitry (horizontal) receives playfield data and horizontal inputs from
+	 // the sync generator circuitry. pfd16..23 from the pf memory determine the horizontal
+	 // position of the motion object.  pfd24..29 from the pf memory determine the indirect
+	 // color of the motion object.   pfd16:23 are latched and loaded into the horizontal position
+	 // counter.
 
 //brad
 //    always @(posedge s_4h)
@@ -601,12 +625,12 @@ module centipede(
 //     else
 //       pfd_hold <= pfd[29:16];
 
-    always @(negedge s_6mhz)
-    if (reset)
-       pfd_hold <= 0;
-     else
-       /* posedge s_4h */
-       if (h_counter[3:1] == 3'b011)	// clock enable rising edge of s_4h
+		always @(negedge s_6mhz)
+		if (reset)
+			 pfd_hold <= 0;
+		 else
+			 /* posedge s_4h */
+			 if (h_counter[3:1] == 3'b011)	// clock enable rising edge of s_4h
 	 pfd_hold <= pfd[29:16];
 
 //   always @(posedge s_4h_n)
@@ -615,79 +639,79 @@ module centipede(
 //     else
 //       pfd_hold2 <= pfd_hold;
 
-   always @(negedge s_6mhz)
-     if (reset)
-       pfd_hold2 <= 0;
-     else
-       /* posedge s_4h_n */
-       if (h_counter[3:1] == 3'b000)	// clock enable rising edge os s_4h_n
-	   pfd_hold2 <= pfd_hold;
-   
-   assign y[1] =
+	 always @(negedge s_6mhz)
+		 if (reset)
+			 pfd_hold2 <= 0;
+		 else
+			 /* posedge s_4h_n */
+			 if (h_counter[3:1] == 3'b000)	// clock enable rising edge os s_4h_n
+		 pfd_hold2 <= pfd_hold;
+	 
+	 assign y[1] =
 		(area == 2'b00) ? (s_256hd ? 1'b0 : gry[1]) :
 		(area == 2'b01) ? (s_256hd ? 1'b0 : pfd_hold2[25]) : 
 		(area == 2'b10) ? (s_256hd ? 1'b0 : pfd_hold2[27]) :
 		(area == 2'b11) ? (s_256hd ? 1'b0 : pfd_hold2[29]) :
 		1'b0;
 
-   assign y[0] =
+	 assign y[0] =
 		(area == 2'b00) ? (s_256hd ? 1'b0 : gry[0]) :
 		(area == 2'b01) ? (s_256hd ? 1'b0 : pfd_hold2[24]) : 
 		(area == 2'b10) ? (s_256hd ? 1'b0 : pfd_hold2[26]) :
 		(area == 2'b11) ? (s_256hd ? 1'b0 : pfd_hold2[28]) :
 		1'b0;
 
-   assign line_ram_ctr_load = ~(pload_n | s_256h);
-   assign line_ram_ctr_clr = ~(pload_n | ~(s_256h & s_256hd_n));
-   
-   always @(posedge s_6mhz)
-     if (reset)
-       line_ram_ctr <= 0;
-     else
-       begin
-	  if (line_ram_ctr_clr)
-	    line_ram_ctr <= 0;
-	  else
-	    if (line_ram_ctr_load) 
-	      line_ram_ctr <= pfd_hold[23:16];
-	    else
-	      line_ram_ctr <= line_ram_ctr + 8'b1;
-       end
-   
-   assign line_ram_addr = line_ram_ctr;
+	 assign line_ram_ctr_load = ~(pload_n | s_256h);
+	 assign line_ram_ctr_clr = ~(pload_n | ~(s_256h & s_256hd_n));
+	 
+	 always @(posedge s_6mhz)
+		 if (reset)
+			 line_ram_ctr <= 0;
+		 else
+			 begin
+		if (line_ram_ctr_clr)
+			line_ram_ctr <= 0;
+		else
+			if (line_ram_ctr_load) 
+				line_ram_ctr <= pfd_hold[23:16];
+			else
+				line_ram_ctr <= line_ram_ctr + 8'b1;
+			 end
+	 
+	 assign line_ram_addr = line_ram_ctr;
 
-   always @(posedge s_6mhz)
-     line_ram[line_ram_addr] <= y;
+	 always @(posedge s_6mhz)
+		 line_ram[line_ram_addr] <= y;
 
-   always @(posedge s_12mhz)
-     if (reset)
-       mr <= 0;
-     else
-       mr <= line_ram[line_ram_addr];
-   
-   always @(posedge s_6mhz_n)
-     if (reset)
-       gry <= 0;
-     else
-       if (~mob_n)
+	 always @(posedge s_12mhz)
+		 if (reset)
+			 mr <= 0;
+		 else
+			 mr <= line_ram[line_ram_addr];
+	 
+	 always @(posedge s_6mhz_n)
+		 if (reset)
+			 gry <= 0;
+		 else
+			 if (~mob_n)
 	 gry <= 2'b00;
-       else
+			 else
 	 gry <= mr;
 
-   
-   //  playfield multiplexer
+	 
+	 //  playfield multiplexer
 
-   // The playfield multiplexer receives playfield data from the pf memory
-   // (PFD0-PFD31) and the output (pf0..7) is a code that determines what is 1) dis-
-   // played on the monitor or 2) read or updated by the MPU.
-   //
-   // When 256H is low and 4H is high, AB4 and AB5 from the MPU address bus is the
-   // select output from P6.   The output is applied to multiplexers k6, l6, m6 and n6
-   // as select inputs.  When the MPU is accessing the playfield code multiplexer, the
-   // playfield data is either being read or updated by the MPU.  When 256H is high and 4H
-   // is low, the inputs frmo the sync generator (128H and 8V) are the selected outputs.
-   // These signals then select which bits of the data PFD0-PFD31 are send out via K6, L6
-   // M6, and N6 for the playfield codes that eventually are displayed on the monitor.
+	 // The playfield multiplexer receives playfield data from the pf memory
+	 // (PFD0-PFD31) and the output (pf0..7) is a code that determines what is 1) dis-
+	 // played on the monitor or 2) read or updated by the MPU.
+	 //
+	 // When 256H is low and 4H is high, AB4 and AB5 from the MPU address bus is the
+	 // select output from P6.   The output is applied to multiplexers k6, l6, m6 and n6
+	 // as select inputs.  When the MPU is accessing the playfield code multiplexer, the
+	 // playfield data is either being read or updated by the MPU.  When 256H is high and 4H
+	 // is low, the inputs frmo the sync generator (128H and 8V) are the selected outputs.
+	 // These signals then select which bits of the data PFD0-PFD31 are send out via K6, L6
+	 // M6, and N6 for the playfield codes that eventually are displayed on the monitor.
 
 //   always @(posedge s_4h)
 //     if (reset)
@@ -695,364 +719,422 @@ module centipede(
 //     else
 //       pic <= pf[7:0];
 
-   always @(negedge s_6mhz)
-     if (reset)
-       pic <= 0;
-     else
-      if (h_counter[3:1] == 3'b011)		// clock enable rising edge of s_4h
+	 always @(negedge s_6mhz)
+		 if (reset)
+			 pic <= 0;
+		 else
+			if (h_counter[3:1] == 3'b011)		// clock enable rising edge of s_4h
 	 pic <= pf[7:0];
 
 
-  dpram #(11) pf_rom1
-  (
-        .clock_a(clk_12mhz),
-        .wren_a(dn_wr & prog_pf_rom_1_cs),
-        .address_a(dn_addr[10:0]),
-        .data_a(dn_data),
+	dpram #(11) pf_rom1
+	(
+				.clock_a(clk_12mhz),
+				.enable_a(1'b1),
+				.wren_a(dn_wr & prog_pf_rom_1_cs),
+				.address_a(dn_addr[10:0]),
+				.data_a(dn_data),
+				.q_a(),
 
-        .clock_b(s_6mhz_n),
-        .address_b(pf_rom1_addr),
-        .q_b(pf_rom1_out)
-   );
+				.clock_b(clk_12mhz),
+				.enable_b(s_6mhz_n),
+				.address_b(pf_rom1_addr),
+				.wren_b(),
+				.data_b(),
+				.q_b(pf_rom1_out_raw)
+	 );
 
-  dpram #(11) pf_rom0
-  (
-        .clock_a(clk_12mhz),
-        .wren_a(dn_wr & prog_pf_rom_0_cs),
-        .address_a(dn_addr[10:0]),
-        .data_a(dn_data),
+	dpram #(11) pf_rom0
+	(
+				.clock_a(clk_12mhz),
+				.enable_a(1'b1),
+				.wren_a(dn_wr & prog_pf_rom_0_cs),
+				.address_a(dn_addr[10:0]),
+				.data_a(dn_data),
+				.q_a(),
 
-        .clock_b(s_6mhz_n),
-        .address_b(pf_rom0_addr),
-        .q_b(pf_rom0_out)
-   );
+				.clock_b(clk_12mhz),
+				.enable_b(s_6mhz_n),
+				.address_b(pf_rom0_addr),
+				.wren_b(),
+				.data_b(),
+				.q_b(pf_rom0_out_raw)
+	 );
 			
 			
-   // a guess, based on millipede schematics
-   wire pf_romx_haddr;
-   assign pf_romx_haddr = s_256h_n & pic[0];
+	 // a guess, based on millipede schematics
+	 wire pf_romx_haddr;
+	 assign pf_romx_haddr = s_256h_n & pic[0];
 
-   assign pf_rom1_addr = { pf_romx_haddr, s_256h, pic[5:1], mga };
-   assign pf_rom0_addr = { pf_romx_haddr, s_256h, pic[5:1], mga };
+	 assign pf_rom1_addr = { pf_romx_haddr, s_256h, pic[5:1], mga };
+	 assign pf_rom0_addr = { pf_romx_haddr, s_256h, pic[5:1], mga };
 
-   assign pf_rom0_out_rev = { pf_rom0_out[0], pf_rom0_out[1], pf_rom0_out[2], pf_rom0_out[3],
-			      pf_rom0_out[4], pf_rom0_out[5], pf_rom0_out[6], pf_rom0_out[7] };
-   
-   assign pf_rom1_out_rev = { pf_rom1_out[0], pf_rom1_out[1], pf_rom1_out[2], pf_rom1_out[3],
-			      pf_rom1_out[4], pf_rom1_out[5], pf_rom1_out[6], pf_rom1_out[7] };
-   
-   assign pf_mux0 = match_n ? 8'b0 : (pic[6] ? pf_rom0_out_rev : pf_rom0_out);
-   assign pf_mux1 = match_n ? 8'b0 : (pic[6] ? pf_rom1_out_rev : pf_rom1_out);
-   
-   always @(posedge s_6mhz)
-     if (reset)
-       pf_shift1 <= 0;
-     else
-       if (~pload_n)
+
+	 assign pf_rom0_out = reset ? 8'b0 : pf_rom0_out_raw;
+	 assign pf_rom1_out = reset ? 8'b0 : pf_rom1_out_raw;
+
+	 assign pf_rom0_out_rev = { pf_rom0_out[0], pf_rom0_out[1], pf_rom0_out[2], pf_rom0_out[3],
+						pf_rom0_out[4], pf_rom0_out[5], pf_rom0_out[6], pf_rom0_out[7] };
+	 
+	 assign pf_rom1_out_rev = { pf_rom1_out[0], pf_rom1_out[1], pf_rom1_out[2], pf_rom1_out[3],
+						pf_rom1_out[4], pf_rom1_out[5], pf_rom1_out[6], pf_rom1_out[7] };
+	 
+	 assign pf_mux0 = match_n ? 8'b0 : (pic[6] ? pf_rom0_out_rev : pf_rom0_out);
+	 assign pf_mux1 = match_n ? 8'b0 : (pic[6] ? pf_rom1_out_rev : pf_rom1_out);
+	 
+	 always @(posedge s_6mhz)
+		 if (reset)
+			 pf_shift1 <= 0;
+		 else
+			 if (~pload_n)
 	 pf_shift1 <= pf_mux1;
-       else
+			 else
 	 pf_shift1 <= { pf_shift1[6:0], 1'b0 };
-   
-   always @(posedge s_6mhz)
-     if (reset)
-       pf_shift0 <= 0;
-     else
-       if (~pload_n)
+	 
+	 always @(posedge s_6mhz)
+		 if (reset)
+			 pf_shift0 <= 0;
+		 else
+			 if (~pload_n)
 	 pf_shift0 <= pf_mux0;
-       else
+			 else
 	 pf_shift0 <= { pf_shift0[6:0], 1'b0 };
-   
-   always @(posedge s_6mhz_n)
-     if (reset)
-       area <= 0;
-     else
-       area <= { pf_shift1[7], pf_shift0[7] };
+	 
+	 always @(posedge s_6mhz_n)
+		 if (reset)
+			 area <= 0;
+		 else
+			 area <= { pf_shift1[7], pf_shift0[7] };
 
-   //
-   assign db_in =
+	 //
+	 assign db_in =
 		 ~rom_n ? rom_out :
 		 ~ram0_n ? ram_out :
-         ~pframrd_n ? pf_out[7:0] :
-		 ~ea_read_n ? hs_out :
+		 ~pframrd_n ? pf_out[7:0] :
+		 ~ea_read_n ? earom_out :
 		 ~in0_n ? playerin_out :
 		 ~in1_n ? joystick_out :
 		 ~swrd_n ? switch_out :
 		 ~pokey_n ? pokey_out :
 		 8'b0;
 
-   // we ignore the cpu, as pf ram is now dp and cpu has it's own port
-   assign pf_sel = pf_addr_stamp ? 2'b00 : { s_8v, s_128h };
-   
-   assign pf =
-	      (pf_sel == 2'b00) ? pfd[7:0] :
-	      (pf_sel == 2'b01) ? pfd[15:8] :
-	      (pf_sel == 2'b10) ? pfd[23:16] :
-	      (pf_sel == 2'b11) ? pfd[31:24] :
-	      8'b0;
+	 // we ignore the cpu, as pf ram is now dp and cpu has it's own port
+	 assign pf_sel = pf_addr_stamp ? 2'b00 : { s_8v, s_128h };
+	 
+	 assign pf =
+				(pf_sel == 2'b00) ? pfd[7:0] :
+				(pf_sel == 2'b01) ? pfd[15:8] :
+				(pf_sel == 2'b10) ? pfd[23:16] :
+				(pf_sel == 2'b11) ? pfd[31:24] :
+				8'b0;
 
-   // playfield address selector
+	 // playfield address selector
 
-   // when s_4h_n is low the pf addr selector receives 8h, 16, 32h & 64h and
-   //  16v, 32v, 64v and 128v from the sync generator. these signals enable the sync
-   //  generator circuits to access the playfield memory
-   //
-   // when s_4h_n goes high the game mpu addresses the pf memory
-   // during horizontal blanking pfa4..7 are held high enabling the motion object
-   // circuitry to access the playfield memory for the motion objects to be displayed
+	 // when s_4h_n is low the pf addr selector receives 8h, 16, 32h & 64h and
+	 //  16v, 32v, 64v and 128v from the sync generator. these signals enable the sync
+	 //  generator circuits to access the playfield memory
+	 //
+	 // when s_4h_n goes high the game mpu addresses the pf memory
+	 // during horizontal blanking pfa4..7 are held high enabling the motion object
+	 // circuitry to access the playfield memory for the motion objects to be displayed
 
-   assign pf_addr_stamp = s_256h_n & s_4h_n;
+	 assign pf_addr_stamp = s_256h_n & s_4h_n;
 
-   // force pf address to "stamp area" during hblank
-   assign pfa7654 = pf_addr_stamp ? 4'b1111 : { s_128v, s_64v, s_32v, s_16v };
-   assign pfa3210 = { s_64h, s_32h, s_16h, s_8h };
-   assign pfa = { pfa7654, pfa3210 };
+	 // force pf address to "stamp area" during hblank
+	 assign pfa7654 = pf_addr_stamp ? 4'b1111 : { s_128v, s_64v, s_32v, s_16v };
+	 assign pfa3210 = { s_64h, s_32h, s_16h, s_8h };
+	 assign pfa = { pfa7654, pfa3210 };
 
-   wire pf_ce;
-   reg 	pf_ce_d;
-   wire [3:0] pf_ce4_n;
-   assign pf_ce = ~(s_1h & s_2h & s_4h & s_6mhz);
+	 wire pf_ce;
+	 reg 	pf_ce_d;
+	 wire [3:0] pf_ce4_n;
+	 assign pf_ce = ~(s_1h & s_2h & s_4h & s_6mhz);
 
-   always @(posedge s_12mhz)
-     if (reset)
-       pf_ce_d <= 0;
-     else
-       pf_ce_d <= pf_ce;
-   
+	 always @(posedge s_12mhz)
+		 if (reset)
+			 pf_ce_d <= 0;
+		 else
+			 pf_ce_d <= pf_ce;
+	 
 //   assign pf_ce4_n = { pf_ce_d, pf_ce_d, pf_ce_d, pf_ce_d };
-   assign pf_ce4_n = 4'b0;
-		 
-   pf_ram_dp pf_ram(
-		    .clk_a(s_6mhz),
-		    .clk_b(s_6mhz/*_n*/),
-		    .reset(reset),
-		    //
-		    .addr_a({ab[9:6], ab[3:0]}),
-		    .din_a(db_out[7:0]),
-		    .dout_a(pf_out),
-		    .ce_a({pfrd3_n, pfrd2_n, pfrd1_n, pfrd0_n}),
-		    .we_a({pfwr3_n, pfwr2_n, pfwr1_n, pfwr0_n}),
-		    //
-		    .addr_b(pfa),
-		    .dout_b(pfd),
-		    .ce_b(pf_ce4_n)
-		    );
-   
-   
-   // High Score Memory Circuitry
+	 assign pf_ce4_n = 4'b0;
+	 pf_ram_dp pf_ram(
+				.clk_a(s_6mhz),
+				.clk_b(s_6mhz/*_n*/),
+				.reset(reset),
+				//
+				.addr_a({ab[9:6], ab[3:0]}),
+				.din_a(db_out),
+				.dout_a(pf_out),
+				.ce_a({pfrd3_n, pfrd2_n, pfrd1_n, pfrd0_n}),
+				.we_a({pfwr3_n, pfwr2_n, pfwr1_n, pfwr0_n}),
+				//
+				.addr_b(pfa),
+				.dout_b(pfd),
+				.ce_b(pf_ce4_n)
+				);
 
-   assign hs_addr_clk = ~(~ea_addr_n & ~write2_n);
-   assign hs_ctrl_clk = ~(~ea_ctrl_n & ~write2_n);
+	// EAROM (top 3 high scores)
+	reg [5:0]   earom_addr;
+	wire [7:0]  earom_out;
+	reg [7:0]   earom_in;
+	reg [3:0]   earom_ctrl;
 
-   always @(posedge hs_addr_clk)
-     hs_addr <= ab[5:0];
+	wire ea_addr_clk = !ea_addr_n && !write2_n;
+	wire ea_ctrl_clk = !ea_ctrl_n && !write2_n;
+	reg ea_addr_clk_last;
+	reg ea_ctrl_clk_last;
+	wire [3:0] earom_ctrl_in = {db_out[3:2], ~db_out[1], db_out[0] };
+	always @(posedge clk_12mhz)
+	begin
+		if(reset)
+		begin
+			earom_ctrl <= 4'b0010;
+		end
+		else
+		begin
+			if(s_6mhz)
+			begin
+				ea_addr_clk_last <= ea_addr_clk;
+				ea_ctrl_clk_last <= ea_ctrl_clk;
 
-   always @(posedge ea_ctrl_clk)
-     hs_ctrl <= db_out[3:0];
+				if(ea_addr_clk && !ea_addr_clk_last)
+				begin
+					// $display("ea_addr_n > ab=%x", ab[5:0]);
+					earom_addr <= ab[5:0];
+					earom_in <= db_out;
+				end
 
-   hs_ram hs_ram(
-		 .clk(hs_ctrl[0]),
-		 .reset(reset),
-		 .a(hs_addr),
-		 .dout(hs_out),
-		 .din(hs_data),
-		 .c1(~hs_ctrl[1]),
-		 .c2(hs_ctrl[2]),
-		 .cs1(hs_ctrl[3])
-		 );
+				if(ea_ctrl_clk && !ea_ctrl_clk_last)
+				begin
+					// $display("ea_ctrl_n > db_out=%x earom_ctrl_in=%b", db_out, earom_ctrl_in);
+					earom_ctrl <= earom_ctrl_in;
+					// if(earom_ctrl_in[3:1] == 3'b100) $display("ea_write");
+					// if(earom_ctrl_in[3:0] == 4'b1011) $display("ea_read: %x", earom_out);
+					// if(earom_ctrl_in[3:1] == 3'b110) $display("ea_erase");
+				end
+			end
+		end
+	end
+	
+	dpram #(6,8) hs_ram 
+	(
+		.clock_a(clk_12mhz),
+		.address_a(earom_addr),
+		.data_a(earom_ctrl[2] == 1'b0 ? earom_in : 8'h00),
+		.q_a(earom_out),
+		.enable_a(s_6mhz && earom_ctrl[3]), // cs1
+		.wren_a(~earom_ctrl[1]), // c1
 
-   always @(posedge hs_addr_clk)
-     hs_data <= db_out[7:0];
-
-   // Joystick Circuitry
-   wire js1_right, js1_left, js1_down, js1_up;
-   wire js2_right, js2_left, js2_down, js2_up;
-
-   assign js1_right = joystick_i[7];
-   assign js1_left = joystick_i[6];
-   assign js1_down = joystick_i[5];
-   assign js1_up = joystick_i[4];
-   assign js2_right = joystick_i[3];
-   assign js2_left = joystick_i[2];
-   assign js2_down = joystick_i[1];
-   assign js2_up = joystick_i[0];
-
-   assign joystick_out = ab[0] ?
-			 { js1_right, js1_left, js1_down, js1_up, js2_right, js2_left, js2_down, js2_up } :
-			 { dir2, 3'b0, trb };
-   
-   // Option Input Circuitry
-
-   assign switch_out = ab[0] ?
-		       sw2_i :
-		       sw1_i;
-
-   // Player Input Circuitry
-   wire coin_r, coin_c, coin_l, self_test;
-   wire cocktail, slam, start1, start2, fire2, fire1;
-
-   assign coin_r = playerinput_i[9];
-   assign coin_c = playerinput_i[8];
-   assign coin_l = playerinput_i[7];
-   assign self_test = playerinput_i[6];
-   assign cocktail = playerinput_i[5];
-   assign slam = playerinput_i[4];
-   assign start2 = playerinput_i[3];
-   assign start1 = playerinput_i[2];
-   assign fire2 = playerinput_i[1];
-   assign fire1 = playerinput_i[0];
-
-   wire [7:0] playerin_out0;
-   wire [7:0] playerin_out1;
-   
-   assign playerin_out1 = { coin_r, coin_c, coin_l, slam, fire2, fire1, start2, start1 };
-   assign playerin_out0 = { dir1, vblank, self_test, cocktail, tra };
-
-   assign playerin_out = ab[0] ? playerin_out1 : playerin_out0;
-   
-   
-   // Coin Counter Output
-   reg [7:0] cc_latch;
-
-   always @(posedge s_6mhz or posedge reset)
-     if (reset)
-       cc_latch <= 0;
-     else
-       if (~out0_n)
-	      cc_latch[ ab[2:0] ] <= db_out[7];
-
-   assign flip     = cc_latch[7];
-   assign led_o[4] = cc_latch[6];
-   assign led_o[3] = cc_latch[5];
-   assign led_o[2] = cc_latch[4];
-   assign led_o[1] = cc_latch[3];
-   assign coin_ctr_r_drive = cc_latch[2];
-   assign coin_ctr_c_drive = cc_latch[1];
-   assign coin_ctr_l_drive = cc_latch[0];
-   
-   // Mini-Trak Ball inputs
-   wire [3:0] tb_mux;
-   wire       s_1_horiz_dir, s_1_horiz_ck, s_1_vert_dir, s_1_vert_ck;
-   wire       s_2_horiz_dir, s_2_horiz_ck, s_2_vert_dir, s_2_vert_ck;
-   wire       tb_h_dir, tb_h_ck, tb_v_dir, tb_v_ck;
-   reg 	      tb_h_reg, tb_v_reg;
-   reg [3:0]  tb_h_ctr, tb_v_ctr;
-   wire       tb_h_ctr_clr, tb_v_ctr_clr;
-   
-   assign s_1_horiz_dir = trakball_i[7];
-   assign s_2_horiz_dir = trakball_i[6];
-   assign s_1_horiz_ck  = trakball_i[5];
-   assign s_2_horiz_ck  = trakball_i[4];
-   assign s_1_vert_dir  = trakball_i[3];
-   assign s_2_vert_dir  = trakball_i[2];
-   assign s_1_vert_ck   = trakball_i[1];
-   assign s_2_vert_ck   = trakball_i[0];
-
-   assign tb_mux = flip ?
-		   { s_1_horiz_dir, s_1_horiz_ck, s_1_vert_dir, s_1_vert_ck } :
-		   { s_2_horiz_dir, s_2_horiz_ck, s_2_vert_dir, s_2_vert_ck };
-
-   assign tb_h_dir = tb_mux[3];
-   assign tb_h_ck = tb_mux[2];
-   assign tb_v_dir = tb_mux[1];
-   assign tb_v_ck = tb_mux[0];
-
-   // H
-   always @(posedge tb_h_ck or posedge reset)
-     if (reset)
-       tb_h_reg <= 0;
-     else
-       tb_h_reg <= tb_h_dir;
-
-   assign tb_h_ctr_clr = reset | ~steerclr_n;
-   
-   always @(posedge tb_h_ck or posedge tb_h_ctr_clr)
-     if (tb_h_ctr_clr)
-       tb_h_ctr <= 0;
-     else
-       if (tb_h_reg)
-	 tb_h_ctr <= tb_h_ctr + 4'd1;
-       else
-	 tb_h_ctr <= tb_h_ctr - 4'd1;
-
-   // V
-   always @(posedge tb_v_ck or posedge reset)
-     if (reset)
-       tb_v_reg <= 0;
-     else
-       tb_v_reg <= tb_v_dir;
-
-   assign tb_v_ctr_clr = reset | ~steerclr_n;
-   
-   always @(posedge tb_v_ck or posedge tb_v_ctr_clr)
-     if (tb_v_ctr_clr)
-       tb_v_ctr <= 0;
-     else
-       if (tb_v_reg)
-	 tb_v_ctr <= tb_v_ctr + 4'd1;
-       else
-	 tb_v_ctr <= tb_v_ctr - 4'd1;
-
-   assign tra = tb_h_ctr;
-   assign trb = tb_v_ctr;
-   assign dir1 = tb_h_reg;
-   assign dir2 = tb_v_reg;
-
-   assign flip_o = flip;
-
-   
-   // Audio output circuitry
-
-	pokey pokey(
-		.clk(phi2),
-		.enable_179(1),
-		.addr(ab[3:0]),
-		.data_in(db_out[7:0]),
-		.wr_en(~rw_n & ~pokey_n),
-		.reset_n(mpu_reset_n),
-		.data_out(pokey_out),
-		.channel_0_out(pokey_ch0),
-		.channel_1_out(pokey_ch1),
-		.channel_2_out(pokey_ch2),
-		.channel_3_out(pokey_ch3)
+		.clock_b(clk_12mhz),
+		.enable_b(1'b1),
+		.address_b(hs_address[5:0]),
+		.data_b(hs_data_in),
+		.q_b(hs_data_out),
+		.wren_b(hs_write)
 	);
 
-	assign audio = (pokey_ch0+pokey_ch1)+(pokey_ch2+pokey_ch3);
+	 // Joystick Circuitry
+	 wire js1_right, js1_left, js1_down, js1_up;
+	 wire js2_right, js2_left, js2_down, js2_up;
+
+	 assign js1_right = joystick_i[7];
+	 assign js1_left = joystick_i[6];
+	 assign js1_down = joystick_i[5];
+	 assign js1_up = joystick_i[4];
+	 assign js2_right = joystick_i[3];
+	 assign js2_left = joystick_i[2];
+	 assign js2_down = joystick_i[1];
+	 assign js2_up = joystick_i[0];
+
+	 assign joystick_out = ab[0] ?
+			 { js1_right, js1_left, js1_down, js1_up, js2_right, js2_left, js2_down, js2_up } :
+			 { dir2, 3'b0, trb };
+	 
+	 // Option Input Circuitry
+
+	 assign switch_out = ab[0] ?
+					 sw2_i :
+					 sw1_i;
+
+	 // Player Input Circuitry
+	 wire coin_r, coin_c, coin_l, self_test;
+	 wire cocktail, slam, start1, start2, fire2, fire1;
+
+	 assign coin_r = playerinput_i[9];
+	 assign coin_c = playerinput_i[8];
+	 assign coin_l = playerinput_i[7];
+	 assign self_test = playerinput_i[6];
+	 assign cocktail = playerinput_i[5];
+	 assign slam = playerinput_i[4];
+	 assign start2 = playerinput_i[3];
+	 assign start1 = playerinput_i[2];
+	 assign fire2 = playerinput_i[1];
+	 assign fire1 = playerinput_i[0];
+
+	 wire [7:0] playerin_out0;
+	 wire [7:0] playerin_out1;
+	 
+	 assign playerin_out1 = { coin_r, coin_c, coin_l, slam, fire2, fire1, start2, start1 };
+	 assign playerin_out0 = { dir1, vblank, self_test, cocktail, tra };
+
+	 assign playerin_out = ab[0] ? playerin_out1 : playerin_out0;
+	 
+	 
+	 // Coin Counter Output
+	 reg [7:0] cc_latch;
+
+	 always @(posedge s_6mhz or posedge reset)
+		 if (reset)
+			 cc_latch <= 0;
+		 else
+			 if (~out0_n)
+				cc_latch[ ab[2:0] ] <= db_out[7];
+
+	 assign flip     = cc_latch[7];
+	 assign led_o[4] = cc_latch[6];
+	 assign led_o[3] = cc_latch[5];
+	 assign led_o[2] = cc_latch[4];
+	 assign led_o[1] = cc_latch[3];
+	 assign coin_ctr_r_drive = cc_latch[2];
+	 assign coin_ctr_c_drive = cc_latch[1];
+	 assign coin_ctr_l_drive = cc_latch[0];
+	 
+	 // Mini-Trak Ball inputs
+	 wire [3:0] tb_mux;
+	 wire       s_1_horiz_dir, s_1_horiz_ck, s_1_vert_dir, s_1_vert_ck;
+	 wire       s_2_horiz_dir, s_2_horiz_ck, s_2_vert_dir, s_2_vert_ck;
+	 wire       tb_h_dir, tb_h_ck, tb_v_dir, tb_v_ck;
+	 reg 	      tb_h_reg, tb_v_reg;
+	 reg [3:0]  tb_h_ctr, tb_v_ctr;
+	 wire       tb_h_ctr_clr, tb_v_ctr_clr;
+	 
+	 assign s_1_horiz_dir = trakball_i[7];
+	 assign s_2_horiz_dir = trakball_i[6];
+	 assign s_1_horiz_ck  = trakball_i[5];
+	 assign s_2_horiz_ck  = trakball_i[4];
+	 assign s_1_vert_dir  = trakball_i[3];
+	 assign s_2_vert_dir  = trakball_i[2];
+	 assign s_1_vert_ck   = trakball_i[1];
+	 assign s_2_vert_ck   = trakball_i[0];
+
+	 assign tb_mux = flip ?
+			 { s_1_horiz_dir, s_1_horiz_ck, s_1_vert_dir, s_1_vert_ck } :
+			 { s_2_horiz_dir, s_2_horiz_ck, s_2_vert_dir, s_2_vert_ck };
+
+	 assign tb_h_dir = tb_mux[3];
+	 assign tb_h_ck = tb_mux[2];
+	 assign tb_v_dir = tb_mux[1];
+	 assign tb_v_ck = tb_mux[0];
+
+	 // H
+	 always @(posedge tb_h_ck or posedge reset)
+		 if (reset)
+			 tb_h_reg <= 0;
+		 else
+			 tb_h_reg <= tb_h_dir;
+
+	 assign tb_h_ctr_clr = reset | ~steerclr_n;
+	 
+	 always @(posedge tb_h_ck or posedge tb_h_ctr_clr)
+		 if (tb_h_ctr_clr)
+			 tb_h_ctr <= 0;
+		 else
+			 if (tb_h_reg)
+	 tb_h_ctr <= tb_h_ctr + 4'd1;
+			 else
+	 tb_h_ctr <= tb_h_ctr - 4'd1;
+
+	 // V
+	 always @(posedge tb_v_ck or posedge reset)
+		 if (reset)
+			 tb_v_reg <= 0;
+		 else
+			 tb_v_reg <= tb_v_dir;
+
+	 assign tb_v_ctr_clr = reset | ~steerclr_n;
+	 
+	 always @(posedge tb_v_ck or posedge tb_v_ctr_clr)
+		 if (tb_v_ctr_clr)
+			 tb_v_ctr <= 0;
+		 else
+			 if (tb_v_reg)
+	 tb_v_ctr <= tb_v_ctr + 4'd1;
+			 else
+	 tb_v_ctr <= tb_v_ctr - 4'd1;
+
+	 assign tra = tb_h_ctr;
+	 assign trb = tb_v_ctr;
+	 assign dir1 = tb_h_reg;
+	 assign dir2 = tb_v_reg;
+
+	 assign flip_o = flip;
+
+	 
+	 // Audio output circuitry
+
+	// pokey pokey(
+	// 	.clk(phi2),
+	// 	.enable_179(1),
+	// 	.addr(ab[3:0]),
+	// 	.data_in(db_out[7:0]),
+	// 	.wr_en(~rw_n & ~pokey_n),
+	// 	.reset_n(mpu_reset_n),
+	// 	.data_out(pokey_out),
+	// 	.channel_0_out(pokey_ch0),
+	// 	.channel_1_out(pokey_ch1),
+	// 	.channel_2_out(pokey_ch2),
+	// 	.channel_3_out(pokey_ch3)
+	// );
+	 pokey pokey(.a(ab[3:0]),
+				 .cs0_n(1'b0),
+				 .cs1_n(pokey_n),
+				 .phi2(phi2),
+				 .reset(mpu_reset/*reset*/),
+				 .r_w_n(rw_n),
+				 .d_in(db_out[7:0]),
+				 .d_out(pokey_out),
+				 .p(8'b0),
+				 .aud(audio));
+	 
+
+	//assign audio = (pokey_ch0+pokey_ch1)+(pokey_ch2+pokey_ch3);
 	assign audio_o = {audio, 2'b0};
 
-   //
-   reg [7:0]  last_pokey_rd;
-   always @(posedge s_6mhz)
-     if (reset)
-       last_pokey_rd <= 0;
-     else
-       if (~pokey_n)
+	 //
+	 reg [7:0]  last_pokey_rd;
+	 always @(posedge s_6mhz)
+		 if (reset)
+			 last_pokey_rd <= 0;
+		 else
+			 if (~pokey_n)
 	 last_pokey_rd <= pokey_out;
  
-   // Video output circuitry
+	 // Video output circuitry
 
-   // The video output circuit receives motion object, playfield, address and data inputs 
-   //  and produces a video output to be displayed on the game monitor.
-   // when the alternate color bit is active, an alternate shade of blue or green is available   
-   
-   assign comp_sync = hsync_n & vsync_n;
+	 // The video output circuit receives motion object, playfield, address and data inputs 
+	 //  and produces a video output to be displayed on the game monitor.
+	 // when the alternate color bit is active, an alternate shade of blue or green is available   
+	 
+	 assign comp_sync = hsync_n & vsync_n;
 
-   wire blank_disp_n;
-   assign blank_disp_n = hblank_n & vblankd_n;
+	 wire blank_disp_n;
+	 assign blank_disp_n = hblank_n & vblankd_n;
 
-   // XXX implement alternate shades of blue and green...
-   always @(posedge s_6mhz_n)
-     if (reset)
-       rgbi <= 4'b1111;		// output is inverted
-	  else if (~blank_disp_n)
-	    rgbi <= 4'b1111;
-      else
-       rgbi <= coloram_rgbi;
+	 // XXX implement alternate shades of blue and green...
+	 always @(posedge s_6mhz_n)
+		 if (reset)
+			 rgbi <= 4'b1111;		// output is inverted
+		else if (~blank_disp_n)
+			rgbi <= 4'b1111;
+			else
+			 rgbi <= coloram_rgbi;
 
-   assign coloram_w_n = write_n | coloram_n;
+	 assign coloram_w_n = write_n | coloram_n;
 
-   wire gry0_or_1;
-   assign gry0_or_1 = gry[1] | gry[0];
-     
+	 wire gry0_or_1;
+	 assign gry0_or_1 = gry[1] | gry[0];
+		 
 //   assign rama_sel = { coloram_n, gry0_or_1 };
 //   
 //   assign rama = 
@@ -1062,48 +1144,48 @@ module centipede(
 //		 (rama_sel == 2'b11) ? { {gry0_or_1, 1'b1}, gry[1:0] } :
 //		 4'b0;
 
-   assign rama =  gry0_or_1 ?
-		  { {gry0_or_1, 1'b1}, gry[1:0] } :
-		  { {gry0_or_1, 1'b1}, area[1:0] };
-   
-   color_ram color_ram(.clk_a(s_6mhz),
-		       .clk_b(s_6mhz_n),
-		       .reset(reset),
-		       .addr_a(ab[3:0]),
-		       .dout_a(coloram_out),
-		       .din_a(db_out[3:0]),
-		       .we_n_a(coloram_w_n),
+	 assign rama =  gry0_or_1 ?
+			{ {gry0_or_1, 1'b1}, gry[1:0] } :
+			{ {gry0_or_1, 1'b1}, area[1:0] };
+	 
+	 color_ram color_ram(.clk_a(s_6mhz),
+					 .clk_b(s_6mhz_n),
+					 .reset(reset),
+					 .addr_a(ab[3:0]),
+					 .dout_a(coloram_out),
+					 .din_a(db_out[3:0]),
+					 .we_n_a(coloram_w_n),
 
-		       .addr_b(rama),
-		       .dout_b(coloram_rgbi));
+					 .addr_b(rama),
+					 .dout_b(coloram_rgbi));
 
-   // output to the top level
-   // bbb_ggg_rrr
-   assign rgb_o =
-                  rgbi == 4'b0000 ? 9'b100_111_111 :
-                  rgbi == 4'b0001 ? 9'b100_111_000 :
-                  rgbi == 4'b0010 ? 9'b100_000_111 :
-                  rgbi == 4'b0011 ? 9'b100_000_000 :
-                  rgbi == 4'b0100 ? 9'b000_100_111 :
-                  rgbi == 4'b0101 ? 9'b000_100_000 :
-                  rgbi == 4'b0110 ? 9'b000_000_111 :
-                  rgbi == 4'b0111 ? 9'b000_000_000 :
-                  rgbi == 4'b1000 ? 9'b111_111_111 :
-                  rgbi == 4'b1001 ? 9'b111_111_000 :
-                  rgbi == 4'b1010 ? 9'b111_000_111 :
-                  rgbi == 4'b1011 ? 9'b111_000_000 :
-                  rgbi == 4'b1100 ? 9'b000_111_111 :
-                  rgbi == 4'b1101 ? 9'b000_111_000 :
-                  rgbi == 4'b1110 ? 9'b000_000_111 :
-                  rgbi == 4'b1111 ? 9'b000_000_000 :
-                  0;
+	 // output to the top level
+	 // bbb_ggg_rrr
+	 assign rgb_o =
+									rgbi == 4'b0000 ? 9'b100_111_111 :
+									rgbi == 4'b0001 ? 9'b100_111_000 :
+									rgbi == 4'b0010 ? 9'b100_000_111 :
+									rgbi == 4'b0011 ? 9'b100_000_000 :
+									rgbi == 4'b0100 ? 9'b000_100_111 :
+									rgbi == 4'b0101 ? 9'b000_100_000 :
+									rgbi == 4'b0110 ? 9'b000_000_111 :
+									rgbi == 4'b0111 ? 9'b000_000_000 :
+									rgbi == 4'b1000 ? 9'b111_111_111 :
+									rgbi == 4'b1001 ? 9'b111_111_000 :
+									rgbi == 4'b1010 ? 9'b111_000_111 :
+									rgbi == 4'b1011 ? 9'b111_000_000 :
+									rgbi == 4'b1100 ? 9'b000_111_111 :
+									rgbi == 4'b1101 ? 9'b000_111_000 :
+									rgbi == 4'b1110 ? 9'b000_000_111 :
+									rgbi == 4'b1111 ? 9'b000_000_000 :
+									0;
 
-   assign sync_o = comp_sync;
-   assign hsync_o = hsync;
-   assign vsync_o = vsync;
-   assign hblank_o = hblank;
-   assign vblank_o = vblank;
+	 assign sync_o = comp_sync;
+	 assign hsync_o = hsync;
+	 assign vsync_o = vsync;
+	 assign hblank_o = hblank;
+	 assign vblank_o = vblank;
 
-   assign clk_6mhz_o = s_6mhz;
-   
+	 assign clk_6mhz_o = s_6mhz;
+	 
 endmodule
