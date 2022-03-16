@@ -18,7 +18,7 @@
 	
 ==============================================================-= */
 
-`timescale 1ns / 100ps
+`timescale 1ps / 1ps
 
 `define RESET_VEC	16'hFFFC
 `define NMI_VEC		16'hFFFA
@@ -200,7 +200,6 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 	// clock edge rather than after.
 	output rw_nxt;
 	output [ABW-1:0] ma_nxt;
-//	tri [ABW-1:0] ma_nxt;
 	output sync;
 	// The following two signals are provided mainly for
 	// debugging.
@@ -370,7 +369,6 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 	wire stx = ir==`STX_Z||ir==`STX_ZY||ir==`STX_A;
 	wire staxy = sta | stx | sty;
 
-
 	wire grp0 = ir[1:0]==2'b00;
 	wire grp1 = ir[1:0]==2'b01;
 	wire grp2 = ir[1:0]==2'b10;
@@ -453,31 +451,19 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 		.o(grp2_o) );
 
 	// inline datapath processing
-//	assign res = s_exec & (inx|iny)|(dex|dey) ? axy_addo : 8'bz;
-//	assign res = s_exec & (tay|tax|txa|tya|txs) ? axy_reg : 8'bz;
-//	assign res = s_exec & tsx ? sp_reg : 8'bz;
-//	assign res = s_exec & ror_a ? {cf,a_reg[DBW-1:1]} : 8'bz;
-//	assign res = s_exec & lsr_a ? {1'b0,a_reg[DBW-1:1]} : 8'bz;
-//	assign res = s_exec & rol_a ? {a_reg[DBW-2:0],cf} : 8'bz;
-//	assign res = s_exec & asl_a ? {a_reg[DBW-2:0],1'b0} : 8'bz;
-//
-//	assign res = s_pul ? di : 8'bz;
-//	assign res = s_update & (grp0|grp2) ? dil : 8'bz;
-//	assign res = s_update & grp1 ? grp1_o : 8'bz;
-
    	assign res =
-		    s_exec & (inx|iny)|(dex|dey) ? axy_addo :
-		    s_exec & (tay|tax|txa|tya|txs) ? axy_reg :
-		    s_exec & tsx ? sp_reg :
-		    s_exec & ror_a ? {cf,a_reg[DBW-1:1]} :
-		    s_exec & lsr_a ? {1'b0,a_reg[DBW-1:1]} :
-		    s_exec & rol_a ? {a_reg[DBW-2:0],cf} :
-		    s_exec & asl_a ? {a_reg[DBW-2:0],1'b0} :
-		    s_pul ? di :
-		    s_rti1 ? di :
-		    s_update & (grp0|grp2) ? dil :
-		    s_update & grp1 ? grp1_o :
-		    8'bz;
+		s_exec & (inx|iny)|(dex|dey) ? axy_addo :
+		s_exec & (tay|tax|txa|tya|txs) ? axy_reg :
+		s_exec & tsx ? sp_reg :
+		s_exec & ror_a ? {cf,a_reg[DBW-1:1]} :
+		s_exec & lsr_a ? {1'b0,a_reg[DBW-1:1]} :
+		s_exec & rol_a ? {a_reg[DBW-2:0],cf} :
+		s_exec & asl_a ? {a_reg[DBW-2:0],1'b0} :
+		s_pul ? di :
+		s_rti1 ? di :
+		s_update & (grp0|grp2) ? dil :
+		s_update & grp1 ? grp1_o :
+		8'bz;
 
 	// control unit
 	sequencer seq0(
@@ -503,7 +489,6 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 		.s_rts1(s_rts1), .s_rts2(s_rts2), .s_rts3(s_rts3),
 		.s_rti1(s_rti1), .s_rti2(s_rti2), .s_rti3(s_rti3),
 		.s_sync(s_sync) );
-
 
 	// Generate critical reset
 	always @(posedge clk)
@@ -531,7 +516,6 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 			vec = `RESET_VEC;
 	end
 
-
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// Select between X, Y, Z registers for memory addressing.
 	reg [7:0] xyz_reg;
@@ -546,7 +530,6 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 			xyz_reg = 8'h00;
 	end
 
-
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 	// memory address multiplexing
 	// Because of the amount of multiplexing on the address bus
@@ -555,83 +538,39 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 	// which uses a lot of resources.
 
 //---   
-`ifdef old
-	// ma = vector
-	assign ma_nxt = (reset | s_reset | s_reset1 | s_nmi3) ? vec : 16'bz;
-	// ma = ma + 1
-	assign ma_nxt = (s_reset2 | s_nmi4 | s_jmpi1 | s_ix1 | s_iy1) ? ma + 1 : 16'bz;
-	// ma = pc + 1
-	assign ma_nxt = ((s_sync & ~any_int) | (s_exec & (absxy | jsr | branch)) | s_rts3) ? pc_reg + 1 : 16'bz;
-	// ma = tmp
-	// abs,y must take precedence over abs,x
-	assign ma_nxt = (s_reset3 | s_nmi5 | s_rti3 | s_rts2 | s_ld_pch | 
-		s_iy2 | s_ix2 | s_abs1 ) ? {{di,tmp}+xyz_reg} : 16'bz;	// abs : abs,x : abs,y : (zp),y
-	// zero page modes
-	assign ma_nxt = (s_exec & (zpxy | ix | iy)) ? {8'h00,di + xyz_reg} : 16'bz;		// zp : zp,x : zp,y : (zp,x) : (zp),y  // all zp modes
-
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-	// all stack modes
-	assign ma_nxt[ABW-1:8] = ((s_exec & (brk|psh|pul|rts|rti)) |
-				s_rts1 |
-				s_rti1 | s_rti2 |
-				s_nmi1 | s_nmi2 |
-				s_jsr1 | s_jsr2 |
-				(s_sync & any_int)
-				) ? 8'h1 : 8'bz;
-	// ma = sp
-	assign ma_nxt[7:0] = (
-				s_nmi1 | s_nmi2 |
-				s_jsr1 | s_jsr2 |
-				(s_sync & any_int) |
-				(s_exec & (brk|psh))
-				) ? sp_reg : 8'bz;
-	assign ma_nxt[7:0] = ((s_exec & (pul|rts|rti)) | s_rts1 | s_rti1 | s_rti2) ? sp_addo : 8'bz;
-
-	// branch instr.
-	// ma = pc + (sign extend)disp
-	assign ma_nxt = (s_branch & taken) ? {pc_reg + {{8{tmp[DBW-1]}},tmp}} : 16'bz;
-	// ma = ma
-	assign ma_nxt = ((s_dataFetch|s_update) & grp2m) ? ma : 16'bz;
-	// ma = pc
-	assign ma_nxt = ((s_branch & ~taken) | s_pul | s_afterWrite |
-		(s_exec & (imm | mop)) | ((s_dataFetch|s_update) & (grp0 | grp1 | grp2x)) ) ?
-		pc_reg : 16'bz;
-`else // !`ifdef old
 	assign ma_nxt =
-		       // ma = vector
-		       (reset | s_reset | s_reset1 | s_nmi3) ? vec :
-		       // ma = ma + 1
-		       (s_reset2 | s_nmi4 | s_jmpi1 | s_ix1 | s_iy1) ? ma + 1 :
-		       // ma = pc + 1
-		       ((s_sync & ~any_int) | (s_exec & (absxy | jsr | branch)) | s_rts3) ? pc_reg + 1 :
-		       // ma = tmp
-		       // abs,y must take precedence over abs,x
-		       (s_reset3 | s_nmi5 | s_rti3 | s_rts2 | s_ld_pch | 
-			s_iy2 | s_ix2 | s_abs1 ) ? {{di,tmp}+{8'b0,xyz_reg}} :		// abs : abs,x : abs,y : (zp),y
-		       // zero page modes
-		       (s_exec & (zpxy | ix | iy)) ? {8'h00,di + xyz_reg} :	// zp : zp,x : zp,y : (zp,x) : (zp),y  // all zp modes
-		       // branch instr.
-		       // ma = pc + (sign extend)disp
-		       (s_branch & taken) ? {pc_reg + {{8{tmp[DBW-1]}},tmp}} :
-		       // ma = ma
-		       ((s_dataFetch|s_update) & grp2m) ? ma :
-		       // ma = pc
-		       ((s_branch & ~taken) | s_pul | s_afterWrite |
-			(s_exec & (imm | mop)) | ((s_dataFetch|s_update) & (grp0 | grp1 | grp2x)) ) ?
-		       pc_reg :
+		// ma = vector
+		(reset | s_reset | s_reset1 | s_nmi3) ? vec :
+		// ma = ma + 1
+		(s_reset2 | s_nmi4 | s_jmpi1 | s_ix1 | s_iy1) ? ma + 1 :
+		// ma = pc + 1
+		((s_sync & ~any_int) | (s_exec & (absxy | jsr | branch)) | s_rts3) ? pc_reg + 1 :
+		// ma = tmp
+		// abs,y must take precedence over abs,x
+		(s_reset3 | s_nmi5 | s_rti3 | s_rts2 | s_ld_pch | 
+	s_iy2 | s_ix2 | s_abs1 ) ? {{di,tmp}+{8'b0,xyz_reg}} :		// abs : abs,x : abs,y : (zp),y
+		// zero page modes
+		(s_exec & (zpxy | ix | iy)) ? {8'h00,di + xyz_reg} :	// zp : zp,x : zp,y : (zp,x) : (zp),y  // all zp modes
+		// branch instr.
+		// ma = pc + (sign extend)disp
+		(s_branch & taken) ? {pc_reg + {{8{tmp[DBW-1]}},tmp}} :
+		// ma = ma
+		((s_dataFetch|s_update) & grp2m) ? ma :
+		// ma = pc
+		((s_branch & ~taken) | s_pul | s_afterWrite |
+	(s_exec & (imm | mop)) | ((s_dataFetch|s_update) & (grp0 | grp1 | grp2x)) ) ?
+		pc_reg :
 
-		       // all stack modes
-		       ((s_exec & (brk|psh)) |
-			s_nmi1 | s_nmi2 |
-			s_jsr1 | s_jsr2 |
-			(s_sync & any_int)) ? { 8'h1, sp_reg } :
+		// all stack modes
+		((s_exec & (brk|psh)) |
+	s_nmi1 | s_nmi2 |
+	s_jsr1 | s_jsr2 |
+	(s_sync & any_int)) ? { 8'h1, sp_reg } :
 
-		       ((s_exec & (pul|rts|rti)) |
-			s_rts1 | s_rti1 | s_rti2) ? { 8'h1, sp_addo } :
+		((s_exec & (pul|rts|rti)) |
+	s_rts1 | s_rti1 | s_rti2) ? { 8'h1, sp_addo } :
 
-		       16'b0;
-`endif  
-//---   
+		16'b0;
 
 	//-------------------------------------------------------------
 	//-------------------------------------------------------------
@@ -984,15 +923,6 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 
 		end // if (rdy)
 	end
-
-   //
-//   always @(posedge clk)
-//     begin
-//	if (s_sync)
-//	  $display("cpu: sync pc %x", pc_reg);
-//     end
-
-
 endmodule
 
 
@@ -1463,63 +1393,7 @@ module sequencer(reset, creset, clk, rdy,
 			s_iy1 <= s_exec & iy;
 			s_iy2 <= s_iy1;
 			s_abs1 <= s_exec & absxy;
-
-			// if somehow got to an invalid state reset
-			// this is really a processor error or perhaps
-			// trying to execute an invalid opcode
-/*
-			s_reset1 <= s_reset | ~(
-				s_reset1 |
-				s_reset2 |
-				s_reset3 |
-				s_nmi1 |
-				s_nmi2 |
-				s_nmi3 |
-				s_nmi4 |
-				s_ld_pch |
-				s_exec |
-				s_dataFetch |
-				s_update |
-				s_afterWrite |
-				s_ix1 |
-				s_ix2 |
-				s_iy1 |
-				s_iy2 |
-				s_abs1 |
-				s_jmpi1 |
-				s_jsr1 |
-				s_jsr2 |
-				s_pul |
-				s_rts3 |
-				s_rti1 |
-				s_rti2 |
-				s_sync); */
-			// End of state advancement
 		end // if (rdy)
-`ifdef SIMULATION
-		if (s_reset1) begin
-			$display("cpu: out of reset ****");
-		end
-`endif
-	   if (0) begin
-		$display("states");
-		$display("\ts_reset=%b s_reset1=%b reset2=%b reset3=%b",s_reset,s_reset1,s_reset2,s_reset3);
-		$display("\ts_nmi1=%b s_nmi2=%b s_nmi3=%b s_nmi4=%b",s_nmi1, s_nmi2, s_nmi3, s_nmi4);
-		$display("\ts_ld_pch=%b",s_ld_pch);
-		$display("\ts_exec=%b",s_exec);
-		$display("\ts_branch=%b", s_branch);
-		$display("\ts_ms1=%b s_update=%b", s_dataFetch, s_update);
-		$display("\ts_post_write=%b",s_afterWrite);
-		$display("\ts_ix1=%b s_ix2=%b",s_ix1, s_ix2);
-		$display("\ts_iy1=%b s_iy2=%b",s_iy1, s_iy2);
-		$display("\ts_abs1=%b",s_abs1);
-		$display("\ts_jmpi1=%b",s_jmpi1);
-		$display("\ts_jsr1=%b s_jsr2=%b",s_jsr1, s_jsr2);
-		$display("\ts_pul=%b",s_pul);
-		$display("\ts_rts1=%b s_rts2=%b s_rts3=%b",s_rts1,s_rts2,s_rts3);
-		$display("\ts_rti1=%b s_rti2=%b",s_rti1, s_rti2);
-		$display("\ts_sync=%b",s_sync);
-	   end
 	end	// always
 
 endmodule

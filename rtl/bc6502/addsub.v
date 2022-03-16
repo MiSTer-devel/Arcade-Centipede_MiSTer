@@ -24,7 +24,8 @@
 	to be inverted. IE. ci = 1 = no borrow in.
 	
 =============================================================== */
-`timescale 1ns / 100ps
+
+`timescale 1ps / 1ps
 
 module addsub(op, ci, a, b, o, co, v);
 	parameter DBW = 32;

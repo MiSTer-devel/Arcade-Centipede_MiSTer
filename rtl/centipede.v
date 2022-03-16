@@ -444,67 +444,55 @@ module centipede(
 	// 	.do(db_out)
 	// );
 	 p6502 p6502(
-				 .clk(mpu_clk),
-				 .reset_n(mpu_reset_n),
-				 .nmi(1'b1),
-				 .irq(irq_n),
-				 .so(1'b0),
-				 .rdy(~pause),
-				 .phi0(phi0),
-				 .phi2(phi2),
-				 .rw_n(rw_n),
-				 .a(ab),
-				 .din(db_in),
-				 .dout(db_out)
-				 );
+		.clk(mpu_clk),
+		.reset_n(mpu_reset_n),
+		.nmi(1'b1),
+		.irq(irq_n),
+		.so(1'b0),
+		.rdy(~pause),
+		.phi0(phi0),
+		.phi2(phi2),
+		.rw_n(rw_n),
+		.a(ab),
+		.din(db_in),
+		.dout(db_out)
+	);
 
 
 	 // Address Decoder
-	 assign write_n = ~(phi2 & ~rw_n);
+	assign write_n = ~(phi2 & ~rw_n);
+	assign brw_n = ~rw_n;
+	assign rom_n = brw_n | ~ab[13];
 
-	 assign brw_n = ~rw_n;
-	 
-	 assign rom_n = brw_n | ~ab[13];
+	//   1111 11
+	//   5432 1098 7654 3210
+	//
+	//   0010 xxxx xxxx xxxx  2000 rom_n
+	//   0000 1100 0000 0000  0c00 
 
-	 //   1111 11
-	 //   5432 1098 7654 3210
-	 //
-	 //   0010 xxxx xxxx xxxx  2000 rom_n
-	 //   0000 1100 0000 0000  0c00 
+	assign adecode =
+		(ab[13:10] == 4'b0000) ? 10'b1111111110 :
+		(ab[13:10] == 4'b0001) ? 10'b1111111101 :
+		(ab[13:10] == 4'b0010) ? 10'b1111111011 :
+		(ab[13:10] == 4'b0011) ? 10'b1111110111 :
+		(ab[13:10] == 4'b0100) ? 10'b1111101111 :
+		(ab[13:10] == 4'b0101) ? 10'b1111011111 :
+		(ab[13:10] == 4'b0110) ? 10'b1110111111 :
+		(ab[13:10] == 4'b0111) ? 10'b1101111111 :
+		(ab[13:10] == 4'b1000) ? 10'b1011111111 :
+		(ab[13:10] == 4'b1001) ? 10'b0111111111 :
+		10'b1111111111;
 
-	 assign adecode =
-			 (ab[13:10] == 4'b0000) ? 10'b1111111110 :
-			 (ab[13:10] == 4'b0001) ? 10'b1111111101 :
-			 (ab[13:10] == 4'b0010) ? 10'b1111111011 :
-			 (ab[13:10] == 4'b0011) ? 10'b1111110111 :
-			 (ab[13:10] == 4'b0100) ? 10'b1111101111 :
-			 (ab[13:10] == 4'b0101) ? 10'b1111011111 :
-			 (ab[13:10] == 4'b0110) ? 10'b1110111111 :
-			 (ab[13:10] == 4'b0111) ? 10'b1101111111 :
-			 (ab[13:10] == 4'b1000) ? 10'b1011111111 :
-			 (ab[13:10] == 4'b1001) ? 10'b0111111111 :
-			 10'b1111111111;
+	wire write2_n = ~(s_6mhz & ~write_n);
 
-   wire write2_n = ~(s_6mhz & ~write_n);
-	//  reg write2_n;
-	//  always @(posedge s_6mhz)
-	// 	 if (reset)
-	// 		 write2_n <= 0;
-	// 	 else
-	// 		 write2_n <= write_n;
-	 
-	 assign steerclr_n = adecode[9] | write2_n;
-	 assign watchdog_n = adecode[8] | write2_n;
-	 assign out0_n =     adecode[7] | write2_n;
-	 assign irqres_n =  (adecode[6] | write2_n) & mpu_reset_n;
-
-	 assign coloram_n = (adecode[5] | ab[9]) /* | pac_n*/;
-	 
-	 assign pokey_n = adecode[4];
-
-	 assign in0_n =   adecode[3] | ab[1];
-	 assign in1_n =   adecode[3] | ~ab[1];
-	 
+	assign steerclr_n = adecode[9] | write2_n;
+	assign watchdog_n = adecode[8] | write2_n;
+	assign out0_n =     adecode[7] | write2_n;
+	assign irqres_n =  (adecode[6] | write2_n) & mpu_reset_n;
+	assign coloram_n = (adecode[5] | ab[9]) /* | pac_n*/;
+	assign pokey_n = adecode[4];
+	assign in0_n =   adecode[3] | ab[1];
+	assign in1_n =   adecode[3] | ~ab[1];
 	assign swrd_n =  adecode[2];
 	assign pf_n =    adecode[1];
 	assign ram0_n =  adecode[0];
@@ -1073,32 +1061,37 @@ module centipede(
 	 
 	 // Audio output circuitry
 
+// `ifndef SIMULATION
+	pokey pokey(
+		.clk(phi2 && !pause),
+		.enable_179(1'b1),
+		.addr(ab[3:0]),
+		.data_in(db_out[7:0]),
+		.wr_en(~rw_n & ~pokey_n),
+		.reset_n(mpu_reset_n),
+		.data_out(pokey_out),
+		.channel_0_out(pokey_ch0),
+		.channel_1_out(pokey_ch1),
+		.channel_2_out(pokey_ch2),
+		.channel_3_out(pokey_ch3)
+	);
+ 	assign audio = (pokey_ch0+pokey_ch1)+(pokey_ch2+pokey_ch3);
+// `endif
+
+// `ifdef SIMULATION
 	// pokey pokey(
 	// 	.clk(phi2),
-	// 	.enable_179(1),
-	// 	.addr(ab[3:0]),
-	// 	.data_in(db_out[7:0]),
-	// 	.wr_en(~rw_n & ~pokey_n),
-	// 	.reset_n(mpu_reset_n),
-	// 	.data_out(pokey_out),
-	// 	.channel_0_out(pokey_ch0),
-	// 	.channel_1_out(pokey_ch1),
-	// 	.channel_2_out(pokey_ch2),
-	// 	.channel_3_out(pokey_ch3)
-	// );
-	 pokey pokey(.a(ab[3:0]),
-				 .cs0_n(1'b0),
-				 .cs1_n(pokey_n),
-				 .phi2(phi2),
-				 .reset(mpu_reset/*reset*/),
-				 .r_w_n(rw_n),
-				 .d_in(db_out[7:0]),
-				 .d_out(pokey_out),
-				 .p(8'b0),
-				 .aud(audio));
-	 
+	// 	.reset(~mpu_reset_n),
+	// 	.a(ab[3:0]),
+	// 	.cs0_n(1'b0),
+	// 	.cs1_n(pokey_n),
+	// 	.wren(~rw_n & ~pokey_n),
+	// 	.d_in(db_out[7:0]),
+	// 	.d_out(pokey_out),
+	// 	.p(),
+	// 	.aud(audio));
+// `endif
 
-	//assign audio = (pokey_ch0+pokey_ch1)+(pokey_ch2+pokey_ch3);
 	assign audio_o = {audio, 2'b0};
 
 	 //
