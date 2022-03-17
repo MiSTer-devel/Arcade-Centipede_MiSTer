@@ -47,15 +47,8 @@ module spram # (
 	begin
 		if(enable)
 		begin
-			if (wren)
-			begin
-				mem[address] <= data;
-				q <= data;
-			end
-			else
-			begin
-				q <= mem[address];
-			end
+			if (wren) mem[address] <= data;
+			q <= mem[address];
 		end
 	end
 

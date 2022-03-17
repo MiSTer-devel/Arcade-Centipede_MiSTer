@@ -40,7 +40,7 @@
 	</switches>
 
 	<rom index="1"></rom>
-	<rom index="0" zip="centiped.zip" md5="92ab4507356aca0896d5c4138e82b9c4">
+	<rom index="0" md5="92ab4507356aca0896d5c4138e82b9c4" zip="centiped.zip">
 		<part crc="c4d995eb" name="136001-407.d1"/>
 		<part crc="bcdebe1b" name="136001-408.e1"/>
 		<part crc="66d7b04a" name="136001-409.fh1"/>
@@ -49,10 +49,7 @@
 		<part crc="b1397029" name="136001-212.hj7"/>
 		<part crc="6fa3093a" name="136001-213.p4"/>
 	</rom>
-	<rom index="2"></rom>
-	<rom index="3"></rom>
-	<rom index="4"></rom>
-
+	
 	<nvram index="4" size="64"/>
 
 	<remark></remark>

@@ -202,6 +202,8 @@ localparam CONF_STR = {
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",  
 	"-;",
+	"OD,Test,Off,On;",
+	"-;",
 	"DIP;",
 	"-;",
 	"OR,Autosave Hiscores,Off,On;",
@@ -211,7 +213,7 @@ localparam CONF_STR = {
 	"-;",
 	"R0,Reset;",
 	"J1,Fire,Start 1P,Start 2P,Coin,Pause;",
-	"Jn,A,Start,Select,Right,L;",
+	"Jn,A,Start,Select,R,L;",
 	"V,v",`BUILD_DATE
 };
 

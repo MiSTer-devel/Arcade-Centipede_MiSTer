@@ -42,8 +42,8 @@ module top(
 	reg [9:0]  playerinput/*verilator public_flat*/;  
 
 	// Hardcode default switches
-	reg [7:0]  sw1 = 8'b01001100; // 5 lives
-	//reg [7:0]  sw1 = 8'b01000000; // 2 lives
+	//reg [7:0]  sw1 = 8'b01001100; // 5 lives
+	reg [7:0]  sw1 = 8'b01000000; // 2 lives
 	reg [7:0]  sw2 = 8'h02;
 
 	 
