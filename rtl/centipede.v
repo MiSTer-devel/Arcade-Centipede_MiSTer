@@ -51,7 +51,7 @@ module centipede(
 	);
 
 	 //
-	 wire s_12mhz, s_12mhz_n;
+	 wire s_12mhz;
 	 wire s_6mhz, s_6mhz_n;
 
 	 wire phi0, phi2;
@@ -100,7 +100,7 @@ module centipede(
 	 wire       s_1h, s_2h, s_4h, s_8h, s_16h, s_32h, s_64h, s_128h, s_256h;
 	 wire       s_1v, s_2v, s_4v, s_8v, s_16v, s_32v, s_64v, s_128v;
 
-	 wire       s_4h_n, s_8h_n, s_256h_n;
+	 wire       s_4h_n, s_256h_n;
 	 wire       s_256hd_n;
 	 wire       s_256h2d_n;
 	 wire	      vblankd_n;
@@ -114,8 +114,6 @@ module centipede(
 	 wire       write_n;
 	 wire       brw_n;
 	 
-	 wire [15:0] pdf;
-
 	 //
 	 wire [7:0]  match_line;
 	 wire [7:0]  match_sum;
@@ -225,13 +223,11 @@ module centipede(
 	 assign s_256h = h_counter[9];
 
 	 assign s_4h_n = ~s_4h;
-	 assign s_8h_n = ~s_8h;
 	 assign s_256h_n = ~s_256h;
 
 	 assign pload_n = ~(s_1h & s_2h & s_4h);
 
 	 assign s_12mhz = clk_12mhz;
-	 assign s_12mhz_n = ~clk_12mhz;
 	 assign s_6mhz_n = ~s_6mhz;
 
 	 assign v_counter_reset = reset | vreset_n == 0;

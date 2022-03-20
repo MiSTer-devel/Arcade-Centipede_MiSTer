@@ -614,7 +614,7 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 		else if (
 			(s_exec & (imm | zpxy | ix | iy | absxy)) |
 			(s_abs1 & ~(jmp | jmpi)) )
-			pc_nxt = pc_reg + 1;
+			pc_nxt = pc_reg + 16'd1;
 		else
 			pc_nxt = pc_reg;
 	end
@@ -868,9 +868,6 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 				// eval branch cond.
 				default: ;
 				endcase
-
-			   if (0) $display("s_exec byte default cond=%h ir=%h ir[7:5]=%h", cond, ir, ir[7:5]);
-
 			end
 
 			//======================================
