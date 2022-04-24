@@ -1,6 +1,6 @@
 set_global_assignment -name QIP_FILE rtl/pokey/pokey.qip
+set_global_assignment -name QIP_FILE rtl/t65/t65.qip
 set_global_assignment -name VERILOG_FILE rtl/pf_ram_dp.v
-set_global_assignment -name VERILOG_FILE rtl/p6502.v
 set_global_assignment -name VERILOG_FILE rtl/color_ram.v
 set_global_assignment -name VERILOG_FILE rtl/centipede.v
 set_global_assignment -name VERILOG_FILE rtl/dpram.v

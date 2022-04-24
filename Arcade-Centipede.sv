@@ -195,12 +195,15 @@ wire [1:0] ar = status[20:19];
 assign VIDEO_ARX = (!ar) ? (status[2]  ? 8'd16 : 8'd15) : (ar - 1'd1);
 assign VIDEO_ARY = (!ar) ? (status[2]  ? 8'd15 : 8'd16) : 12'd0;
 
-`include "build_id.v" 
+`include "build_id.v"
 localparam CONF_STR = {
 	"A.CENTIPED;;",
 	"H0OJK,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"H0O2,Orientation,Vert,Horz;",
-	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",  
+	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
+	"O79,Trackball sensitivity,0,1,2,3,4,5,6,7;",
+	"OB,Vertical flip,Off,On;",
+	"OC,Cabinet,Cocktail,Upright;",
 	"-;",
 	"OD,Test,Off,On;",
 	"-;",
@@ -230,7 +233,7 @@ pll pll
 	.outclk_0(),
 	.outclk_1(clk_24),
 	.outclk_2(clk_12)
-	
+
 );
 
 ///////////////////////////////////////////////////
@@ -238,7 +241,7 @@ pll pll
 wire [31:0] status;
 wire  [1:0] buttons;
 wire        forced_scandoubler;
-wire			video_rotated;
+wire  			video_rotated;
 wire        direct_video;
 
 wire        ioctl_download;
@@ -284,7 +287,7 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 
 	.joystick_0(joystick_0),
 	.joystick_1(joystick_1),
-	
+
 	.ps2_mouse(ps2_mouse)
 );
 
@@ -305,9 +308,11 @@ wire m_start1 = joy[5];
 wire m_start2 = joy[6];
 wire m_coin   = joy[7];
 
-wire m_test = ~status[13];
-wire m_slam = 1'b1;//generate Noise
+wire m_test = status[13];
+wire m_slam = 1'b0;//generate Noise
 wire m_pause   = joy[8];
+wire screen_flip = status[11];
+wire m_cocktail = status[12];
 
 // PAUSE SYSTEM
 wire				pause_cpu;
@@ -342,6 +347,8 @@ always @(posedge clk_24) begin
 end
 wire no_rotate = status[2] | direct_video ;
 wire rotate_ccw = 1;
+wire flip = 0;
+
 screen_rotate screen_rotate (.*);
 
 arcade_video #(256,9,1) arcade_video
@@ -354,7 +361,7 @@ arcade_video #(256,9,1) arcade_video
 	.VBlank(vblank),
 	.HSync(hs),
 	.VSync(vs),
-	
+
 	.fx(status[5:3])
 
 );
@@ -365,7 +372,7 @@ assign AUDIO_L = {audio,audio};
 assign AUDIO_R = AUDIO_L;
 assign AUDIO_S = 0;
 
-wire flip;
+wire control_flip;
 wire [3:0] led_o;
 wire [7:0] trakball_i;
 wire [7:0] joystick_i;
@@ -374,25 +381,32 @@ wire [7:0] sw2_i;
 wire [9:0] playerinput_i;
 
 // inputs: coin R, coin C, coin L, self test, cocktail, slam, start 2, start 1, fire 2, fire 1
-assign playerinput_i = { 1'b1, 1'b1, ~(m_coin), m_test, status[12], m_slam, ~(m_start2), ~(m_start1), ~m_fire_2, ~m_fire };
+assign playerinput_i = { 1'b1, 1'b1, ~m_coin, ~m_test, ~m_cocktail, ~m_slam, ~m_start2, ~m_start1, ~m_fire_2, ~m_fire };
 
 assign joystick_i = { ~m_right,~m_left,~m_down,~m_up, ~m_right_2,~m_left_2,~m_down_2,~m_up_2};
 
 assign trakball_i = {trakdata[3],trakdata[3],trakdata[2],trakdata[2],trakdata[1],trakdata[1],trakdata[0],trakdata[0]};
 reg [3:0] trakdata;
 
+wire [2:0] mouse_sense;
+
+assign mouse_sense = status[9:7];
+
 // Trackball movement
 always @(posedge clk_sys) begin
 	reg [11:0] mposx;
 	reg [11:0] mposy;
 	reg        old_mstate;
-	
+	reg [2:0]  mouse_delay;
+
+  if (mouse_delay == mouse_sense) begin
+
 	old_mstate <= ps2_mouse[24];
 	if(old_mstate != ps2_mouse[24]) begin
-		if(!(^mposx[11:10])) mposx <= mposx + {{4{ps2_mouse[4] ^ flip}}, ps2_mouse[15:8]};
-		if(!(^mposy[11:10])) mposy <= mposy + {{4{ps2_mouse[5] ^ flip}}, ps2_mouse[23:16]};
+		if(!(^mposx[11:10])) mposx <= mposx + {{4{ps2_mouse[4] ^ control_flip}}, ps2_mouse[15:8]};
+		if(!(^mposy[11:10])) mposy <= mposy + {{4{ps2_mouse[5] ^ control_flip}}, ps2_mouse[23:16]};
 	end
-	
+
 	if(mposx != 0) begin
 		if(mposx[11]) begin
 			mposx <= mposx + 1'b1;
@@ -404,7 +418,7 @@ always @(posedge clk_sys) begin
 		end
 		trakdata[2] = !trakdata[2];
 	end
-	
+
 	if(mposy != 0) begin
 		if(mposy[11]) begin
 			mposy <= mposy + 1'b1;
@@ -416,6 +430,10 @@ always @(posedge clk_sys) begin
 		end
 		trakdata[0] = !trakdata[0];
 	end
+	mouse_delay <= 0;
+	end
+  else
+   mouse_delay <= mouse_delay + 1;
 end
 
 
@@ -430,17 +448,18 @@ wire clk_6_o;
  		 .reset(reset),
 		 .playerinput_i(playerinput_i),
 		 .trakball_i(trakball_i),
-		 .flip_o(flip),
+		 .flip_o(control_flip),
+		 .scrn_flip_i(screen_flip),
 		 .joystick_i(joystick_i),
-		 .sw1_i(sw[0]),
-		 .sw2_i(sw[1]),
+		 .sw1_i(sw[1]),
+		 .sw2_i(sw[2]),
 		 .led_o(led_o),
 		 .audio_o(audio),
 
 		 .dn_addr(ioctl_addr[15:0]),
 		 .dn_data(ioctl_dout),
 		 .dn_wr(ioctl_wr & rom_download),
-		 
+
 		 .rgb_o(rgb_in),
 		 .sync_o(),
 		 .hsync_o(hs),
