@@ -1,5 +1,0 @@
-`include "chip_6502.v"
-`include "ram_6502.v"
-`include "clocks_6502.v"
-`include "test_6502.v"
-`include "models.v"
