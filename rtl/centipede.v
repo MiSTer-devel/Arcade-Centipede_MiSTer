@@ -16,7 +16,7 @@
 //
 
 `timescale 1 ps / 1 ps
-	
+
 module centipede(
 		input         clk_12mhz,
 		input         reset,
@@ -24,14 +24,13 @@ module centipede(
 		input [9:0]   playerinput_i,
 		input [7:0]   trakball_i,
 		output        flip_o,
+		input         scrn_flip_i,
 		input [7:0]   joystick_i,
 		input [7:0]   sw1_i,
 		input [7:0]   sw2_i,
 		input  [15:0] dn_addr,
 		input  [7:0]  dn_data,
 		input					dn_wr,
-		input 				v_flip,
-		input 				h_flip,
 		output [4:1]  led_o,
 		output [8:0]  rgb_o,
 		output        sync_o,
@@ -80,23 +79,23 @@ module centipede(
 	 wire       rw_n;
 
 	 wire [15:0] ab;
-	 
+
 	 wire [7:0] db_in;
 	 wire [7:0] db_out;
 
 	 wire [7:0] ram_out;
 	 wire [7:0] rom_out;
-	 
+
 	 //
 	 wire [7:0] vprom_addr;
 	 wire [3:0] vprom_out;
 	 reg [3:0]  vprom_reg;
-	 
+
 	 wire       vsync, vblank, hblank, vreset;
 	 reg 	      hsync;
 	 wire       vsync_n, hsync_n, vblank_n, hblank_n, vreset_n;
 	 wire       hsync_reset;
-	 
+
 	 wire       s_1h, s_2h, s_4h, s_8h, s_16h, s_32h, s_64h, s_128h, s_256h;
 	 wire       s_1v, s_2v, s_4v, s_8v, s_16v, s_32v, s_64v, s_128v;
 
@@ -105,21 +104,22 @@ module centipede(
 	 wire       s_256h2d_n;
 	 wire	      vblankd_n;
 	 wire       s_6_12;
-	 
+	 wire [7:0] flip_h, flip_v;
+
 	 reg 	      s_256h2d;
 	 reg 	      s_256hd;
 	 reg 	      vblankd;
-	 
+
 	 wire       pload_n;
 	 wire       write_n;
 	 wire       brw_n;
-	 
+
 	 //
 	 wire [7:0]  match_line;
 	 wire [7:0]  match_sum;
 	 wire        match_sum_top;
 	 reg [5:0]   match_sum_hold;
-				 
+
 	 wire [3:0]  match_mux;
 	 wire        match_n;
 	 wire        match_true;
@@ -140,7 +140,7 @@ module centipede(
 	 reg [1:0]   gry;
 	 wire [1:0]  y;
 	 reg [1:0]   mr;
-	 
+
 	 wire [7:0]  line_ram_addr;
 	 reg [1:0]   line_ram[0:255];
 	 reg [7:0]   line_ram_ctr;
@@ -159,7 +159,7 @@ module centipede(
 
 	 reg [7:0]   pic;
 
-	 
+
 	 reg 	       hs;
 	 wire        hs_set;
 	 //
@@ -193,15 +193,15 @@ module centipede(
 	 wire [7:0]  playerin_out;
 
 	 wire [7:0]  pokey_out;
-	 wire [3:0] pokey_ch0, pokey_ch1, pokey_ch2, pokey_ch3; 
- 
+	 wire [3:0] pokey_ch0, pokey_ch1, pokey_ch2, pokey_ch3;
+
 	 // ------------------------------------------------------------------------
 
 	 // Synchronizer
 	 reg [11:0]  h_counter;
 	 reg [7:0]   v_counter;
 	 wire        v_counter_reset;
-	
+
 	 always @(posedge s_12mhz or posedge reset)
 		 if (reset)
 			 h_counter <= 12'b1101_0000_0000;
@@ -241,7 +241,7 @@ module centipede(
 	 v_counter <= 0;
 			 else
 	 v_counter <= v_counter + 8'd1;
-	 
+
 	 assign s_1v   = v_counter[0];
 	 assign s_2v   = v_counter[1];
 	 assign s_4v   = v_counter[2];
@@ -288,7 +288,7 @@ module centipede(
 
 	 //
 	 assign hs_set = reset | ~s_256h_n;
-	 
+
 	 always @(posedge s_32h or posedge hs_set)
 		 if (hs_set)
 			 hs <= 1;
@@ -296,7 +296,7 @@ module centipede(
 			 hs <= s_64h;
 
 	 assign hsync_reset = reset | hs;
-	 
+
 	 always @(posedge s_8h or posedge hsync_reset)
 		 if (hsync_reset)
 			 hsync <= 0;
@@ -321,7 +321,7 @@ module centipede(
 	 assign s_6_12 = ~(s_6mhz & s_12mhz);
 
 	 reg xxx1;
-	 
+
 	 always @(posedge s_6_12)
 		 if (reset)
 			 xxx1 <= 0;
@@ -377,7 +377,7 @@ module centipede(
 	);
 
 	 wire        irq_n;
-	 
+
 	 always @(posedge s_16v or negedge irqres_n)
 		 if (~irqres_n)
 			 irq <= 1'b1;
@@ -423,22 +423,25 @@ module centipede(
 		assign mpu_clk = s_6mhz;
 		assign mpu_reset_n = ~mpu_reset;
 
-	//assign phi2 = ~phi0;
-	// T65 cpu(
-	// 	.mode(0),
-	// 	.res_n(mpu_reset_n),
-	// 	.enable(1),
-	// 	.clk(phi0),
-	// 	.rdy(~pause),
-	// 	.abort_n(1),
-	// 	.irq_n(irq_n),
-	// 	.nmi_n(1),
-	// 	.so_n(1),
-	// 	.r_w_n(rw_n),
-	// 	.a(ab),
-	// 	.di(db_in),
-	// 	.do(db_out)
-	// );
+	assign phi2 = ~phi0;
+
+	 T65 cpu(
+	 	.mode(0),
+	 	.res_n(mpu_reset_n),
+	 	.enable(1),
+	 	.clk(phi0),
+	 	.rdy(~pause),
+	 	.abort_n(1),
+	 	.irq_n(irq_n),
+	 	.nmi_n(1),
+	 	.so_n(1),
+	 	.r_w_n(rw_n),
+	 	.a(ab),
+	 	.di(db_in),
+	 	.do(db_out)
+	 );
+
+/*
 	 p6502 p6502(
 		.clk(mpu_clk),
 		.reset_n(mpu_reset_n),
@@ -453,7 +456,7 @@ module centipede(
 		.din(db_in),
 		.dout(db_out)
 	);
-
+*/
 
 	 // Address Decoder
 	assign write_n = ~(phi2 & ~rw_n);
@@ -464,7 +467,7 @@ module centipede(
 	//   5432 1098 7654 3210
 	//
 	//   0010 xxxx xxxx xxxx  2000 rom_n
-	//   0000 1100 0000 0000  0c00 
+	//   0000 1100 0000 0000  0c00
 
 	assign adecode =
 		(ab[13:10] == 4'b0000) ? 10'b1111111110 :
@@ -492,7 +495,7 @@ module centipede(
 	assign swrd_n =  adecode[2];
 	assign pf_n =    adecode[1];
 	assign ram0_n =  adecode[0];
-	
+
 	wire C5 = ~ab[9]|adecode[5];
 
 	assign {ea_read_n, ea_ctrl_n, ea_addr_n} =
@@ -501,7 +504,7 @@ module centipede(
 					({C5, ab[8:7]} == 3'b010) ? 3'b011 :
 					3'b111;
 	 assign pframrd_n = pf_n | brw_n;
-	 
+
 	 assign {pfwr3_n, pfwr2_n, pfwr1_n, pfwr0_n} =
 					({pf_n, write_n, ab[5:4]} == 4'b0000) ? 4'b1110 :
 					({pf_n, write_n, ab[5:4]} == 4'b0001) ? 4'b1101 :
@@ -538,7 +541,7 @@ module centipede(
 	 assign s_256h2d_n = ~s_256h2d;
 	 assign s_256hd_n = ~s_256hd;
 	 assign vblankd_n = ~vblankd;
-	 
+
 	 // motion objects (vertical)
 
 	 // the motion object circuitry (vertical) receives pf data and vertical inputs from the
@@ -567,7 +570,10 @@ module centipede(
 	 // 256h when high selects the playfield picture color codes to be addressed.
 	 // 256h when low selects the motion object color codes to be addressed
 
-	 assign match_line = { s_128v, s_64v, s_32v, s_16v, s_8v, s_4v, s_2v, s_1v };
+	 assign flip_h = v_counter > 8'd239 ? h_counter[8:1] : 8'd255 - h_counter[8:1];
+   assign flip_v = v_counter < 8'd240 ? 8'd239 - v_counter : v_counter;
+
+	 assign match_line = scrn_flip_i ? flip_v : { s_128v, s_64v, s_32v, s_16v, s_8v, s_4v, s_2v, s_1v };
 	 assign match_sum = match_line + pfd[15:8];
 	 assign match_sum_top = ~(match_sum[7] & match_sum[6] & match_sum[5] & match_sum[4]);
 
@@ -584,7 +590,7 @@ module centipede(
 			 if (h_counter[3:1] == 3'b011)	// clock enable rising edge of s_4h
 			 match_sum_hold <= { match_sum_top, 1'b0, match_sum[3:0] };
 
-	 assign match_mux = s_256h ? { pic[0], s_4v, s_2v, s_1v } : match_sum_hold[3:0];
+	 assign match_mux = s_256h ? { pic[0], (scrn_flip_i ? flip_v[2:0] : {s_4v, s_2v, s_1v}) } : match_sum_hold[3:0];
 
 	 assign match_n = match_sum_hold[5] & s_256h_n;
 
@@ -592,8 +598,8 @@ module centipede(
 			match_mux[2] ^ pic[7],
 			match_mux[1] ^ pic[7],
 			match_mux[0] ^ pic[7] };
-	 
-	 
+
+
 	 // motion objects (horizontal)
 
 	 // the motion object circuitry (horizontal) receives playfield data and horizontal inputs from
@@ -630,24 +636,24 @@ module centipede(
 			 /* posedge s_4h_n */
 			 if (h_counter[3:1] == 3'b000)	// clock enable rising edge os s_4h_n
 		 pfd_hold2 <= pfd_hold;
-	 
+
 	 assign y[1] =
 		(area == 2'b00) ? (s_256hd ? 1'b0 : gry[1]) :
-		(area == 2'b01) ? (s_256hd ? 1'b0 : pfd_hold2[25]) : 
+		(area == 2'b01) ? (s_256hd ? 1'b0 : pfd_hold2[25]) :
 		(area == 2'b10) ? (s_256hd ? 1'b0 : pfd_hold2[27]) :
 		(area == 2'b11) ? (s_256hd ? 1'b0 : pfd_hold2[29]) :
 		1'b0;
 
 	 assign y[0] =
 		(area == 2'b00) ? (s_256hd ? 1'b0 : gry[0]) :
-		(area == 2'b01) ? (s_256hd ? 1'b0 : pfd_hold2[24]) : 
+		(area == 2'b01) ? (s_256hd ? 1'b0 : pfd_hold2[24]) :
 		(area == 2'b10) ? (s_256hd ? 1'b0 : pfd_hold2[26]) :
 		(area == 2'b11) ? (s_256hd ? 1'b0 : pfd_hold2[28]) :
 		1'b0;
 
 	 assign line_ram_ctr_load = ~(pload_n | s_256h);
 	 assign line_ram_ctr_clr = ~(pload_n | ~(s_256h & s_256hd_n));
-	 
+
 	 always @(posedge s_6mhz)
 		 if (reset)
 			 line_ram_ctr <= 0;
@@ -656,12 +662,12 @@ module centipede(
 		if (line_ram_ctr_clr)
 			line_ram_ctr <= 0;
 		else
-			if (line_ram_ctr_load) 
-				line_ram_ctr <= pfd_hold[23:16];
+			if (line_ram_ctr_load)
+				line_ram_ctr <= scrn_flip_i ? 8'd248 - pfd_hold[23:16] : pfd_hold[23:16];
 			else
 				line_ram_ctr <= line_ram_ctr + 8'b1;
 			 end
-	 
+
 	 assign line_ram_addr = line_ram_ctr;
 
 	 always @(posedge s_6mhz)
@@ -672,7 +678,7 @@ module centipede(
 			 mr <= 0;
 		 else
 			 mr <= line_ram[line_ram_addr];
-	 
+
 	 always @(posedge s_6mhz_n)
 		 if (reset)
 			 gry <= 0;
@@ -682,7 +688,7 @@ module centipede(
 			 else
 	 gry <= mr;
 
-	 
+
 	 //  playfield multiplexer
 
 	 // The playfield multiplexer receives playfield data from the pf memory
@@ -744,8 +750,8 @@ module centipede(
 				.data_b(),
 				.q_b(pf_rom0_out_raw)
 	 );
-			
-			
+
+
 	 // a guess, based on millipede schematics
 	 wire pf_romx_haddr;
 	 assign pf_romx_haddr = s_256h_n & pic[0];
@@ -759,13 +765,13 @@ module centipede(
 
 	 assign pf_rom0_out_rev = { pf_rom0_out[0], pf_rom0_out[1], pf_rom0_out[2], pf_rom0_out[3],
 						pf_rom0_out[4], pf_rom0_out[5], pf_rom0_out[6], pf_rom0_out[7] };
-	 
+
 	 assign pf_rom1_out_rev = { pf_rom1_out[0], pf_rom1_out[1], pf_rom1_out[2], pf_rom1_out[3],
 						pf_rom1_out[4], pf_rom1_out[5], pf_rom1_out[6], pf_rom1_out[7] };
-	 
-	 assign pf_mux0 = match_n ? 8'b0 : (pic[6] ? pf_rom0_out_rev : pf_rom0_out);
-	 assign pf_mux1 = match_n ? 8'b0 : (pic[6] ? pf_rom1_out_rev : pf_rom1_out);
-	 
+
+	 assign pf_mux0 = match_n ? 8'b0 : (pic[6] ^ scrn_flip_i ? pf_rom0_out_rev : pf_rom0_out);
+	 assign pf_mux1 = match_n ? 8'b0 : (pic[6] ^ scrn_flip_i ? pf_rom1_out_rev : pf_rom1_out);
+
 	 always @(posedge s_6mhz)
 		 if (reset)
 			 pf_shift1 <= 0;
@@ -774,7 +780,7 @@ module centipede(
 	 pf_shift1 <= pf_mux1;
 			 else
 	 pf_shift1 <= { pf_shift1[6:0], 1'b0 };
-	 
+
 	 always @(posedge s_6mhz)
 		 if (reset)
 			 pf_shift0 <= 0;
@@ -783,7 +789,7 @@ module centipede(
 	 pf_shift0 <= pf_mux0;
 			 else
 	 pf_shift0 <= { pf_shift0[6:0], 1'b0 };
-	 
+
 	 always @(posedge s_6mhz_n)
 		 if (reset)
 			 area <= 0;
@@ -803,8 +809,8 @@ module centipede(
 		 8'b0;
 
 	 // we ignore the cpu, as pf ram is now dp and cpu has it's own port
-	 assign pf_sel = pf_addr_stamp ? 2'b00 : { s_8v, s_128h };
-	 
+	 assign pf_sel = pf_addr_stamp ? 2'b00 : (scrn_flip_i ? {flip_v[3], flip_h[7]} : { s_8v, s_128h });
+
 	 assign pf =
 				(pf_sel == 2'b00) ? pfd[7:0] :
 				(pf_sel == 2'b01) ? pfd[15:8] :
@@ -825,8 +831,8 @@ module centipede(
 	 assign pf_addr_stamp = s_256h_n & s_4h_n;
 
 	 // force pf address to "stamp area" during hblank
-	 assign pfa7654 = pf_addr_stamp ? 4'b1111 : { s_128v, s_64v, s_32v, s_16v };
-	 assign pfa3210 = { s_64h, s_32h, s_16h, s_8h };
+	 assign pfa7654 = pf_addr_stamp ? 4'b1111 : (scrn_flip_i ? flip_v[7:4] : { s_128v, s_64v, s_32v, s_16v });
+	 assign pfa3210 = scrn_flip_i ? ( pf_addr_stamp ? 4'b1111 - flip_h[6:3] : flip_h[6:3] ) : { s_64h, s_32h, s_16h, s_8h };
 	 assign pfa = { pfa7654, pfa3210 };
 
 	 wire pf_ce;
@@ -839,7 +845,7 @@ module centipede(
 			 pf_ce_d <= 0;
 		 else
 			 pf_ce_d <= pf_ce;
-	 
+
 //   assign pf_ce4_n = { pf_ce_d, pf_ce_d, pf_ce_d, pf_ce_d };
 	 assign pf_ce4_n = 4'b0;
 	 pf_ram_dp pf_ram(
@@ -900,8 +906,8 @@ module centipede(
 			end
 		end
 	end
-	
-	dpram #(6,8) hs_ram 
+
+	dpram #(6,8) hs_ram
 	(
 		.clock_a(clk_12mhz),
 		.address_a(earom_addr),
@@ -934,7 +940,7 @@ module centipede(
 	 assign joystick_out = ab[0] ?
 			 { js1_right, js1_left, js1_down, js1_up, js2_right, js2_left, js2_down, js2_up } :
 			 { dir2, 3'b0, trb };
-	 
+
 	 // Option Input Circuitry
 
 	 assign switch_out = ab[0] ?
@@ -958,13 +964,13 @@ module centipede(
 
 	 wire [7:0] playerin_out0;
 	 wire [7:0] playerin_out1;
-	 
+
 	 assign playerin_out1 = { coin_r, coin_c, coin_l, slam, fire2, fire1, start2, start1 };
 	 assign playerin_out0 = { dir1, vblank, self_test, cocktail, tra };
 
 	 assign playerin_out = ab[0] ? playerin_out1 : playerin_out0;
-	 
-	 
+
+
 	 // Coin Counter Output
 	 reg [7:0] cc_latch;
 
@@ -983,7 +989,7 @@ module centipede(
 	 assign coin_ctr_r_drive = cc_latch[2];
 	 assign coin_ctr_c_drive = cc_latch[1];
 	 assign coin_ctr_l_drive = cc_latch[0];
-	 
+
 	 // Mini-Trak Ball inputs
 	 wire [3:0] tb_mux;
 	 wire       s_1_horiz_dir, s_1_horiz_ck, s_1_vert_dir, s_1_vert_ck;
@@ -992,7 +998,7 @@ module centipede(
 	 reg 	      tb_h_reg, tb_v_reg;
 	 reg [3:0]  tb_h_ctr, tb_v_ctr;
 	 wire       tb_h_ctr_clr, tb_v_ctr_clr;
-	 
+
 	 assign s_1_horiz_dir = trakball_i[7];
 	 assign s_2_horiz_dir = trakball_i[6];
 	 assign s_1_horiz_ck  = trakball_i[5];
@@ -1019,7 +1025,7 @@ module centipede(
 			 tb_h_reg <= tb_h_dir;
 
 	 assign tb_h_ctr_clr = reset | ~steerclr_n;
-	 
+
 	 always @(posedge tb_h_ck or posedge tb_h_ctr_clr)
 		 if (tb_h_ctr_clr)
 			 tb_h_ctr <= 0;
@@ -1037,7 +1043,7 @@ module centipede(
 			 tb_v_reg <= tb_v_dir;
 
 	 assign tb_v_ctr_clr = reset | ~steerclr_n;
-	 
+
 	 always @(posedge tb_v_ck or posedge tb_v_ctr_clr)
 		 if (tb_v_ctr_clr)
 			 tb_v_ctr <= 0;
@@ -1054,7 +1060,7 @@ module centipede(
 
 	 assign flip_o = flip;
 
-	 
+
 	 // Audio output circuitry
 
 // `ifndef SIMULATION
@@ -1098,13 +1104,13 @@ module centipede(
 		 else
 			 if (~pokey_n)
 	 last_pokey_rd <= pokey_out;
- 
+
 	 // Video output circuitry
 
-	 // The video output circuit receives motion object, playfield, address and data inputs 
+	 // The video output circuit receives motion object, playfield, address and data inputs
 	 //  and produces a video output to be displayed on the game monitor.
-	 // when the alternate color bit is active, an alternate shade of blue or green is available   
-	 
+	 // when the alternate color bit is active, an alternate shade of blue or green is available
+
 	 assign comp_sync = hsync_n & vsync_n;
 
 	 wire blank_disp_n;
@@ -1123,10 +1129,10 @@ module centipede(
 
 	 wire gry0_or_1;
 	 assign gry0_or_1 = gry[1] | gry[0];
-		 
+
 //   assign rama_sel = { coloram_n, gry0_or_1 };
-//   
-//   assign rama = 
+//
+//   assign rama =
 //		 (rama_sel == 2'b00) ? { ab[3:0] } :
 //		 (rama_sel == 2'b01) ? { ab[3:0] } :
 //		 (rama_sel == 2'b10) ? { {gry0_or_1, 1'b1}, area[1:0] } :
@@ -1136,7 +1142,7 @@ module centipede(
 	 assign rama =  gry0_or_1 ?
 			{ {gry0_or_1, 1'b1}, gry[1:0] } :
 			{ {gry0_or_1, 1'b1}, area[1:0] };
-	 
+
 	 color_ram color_ram(.clk_a(s_6mhz),
 					 .clk_b(s_6mhz_n),
 					 .reset(reset),
@@ -1176,5 +1182,5 @@ module centipede(
 	 assign vblank_o = vblank;
 
 	 assign clk_6mhz_o = s_6mhz;
-	 
+
 endmodule
