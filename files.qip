@@ -7,4 +7,5 @@ set_global_assignment -name VERILOG_FILE rtl/dpram.v
 set_global_assignment -name VERILOG_FILE rtl/spram.v
 set_global_assignment -name VERILOG_FILE rtl/pause.v
 set_global_assignment -name VERILOG_FILE rtl/nvram.v
+set_global_assignment -name VERILOG_FILE rtl/trackball.v
 set_global_assignment -name SYSTEMVERILOG_FILE "Arcade-Centipede.sv"

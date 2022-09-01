@@ -182,19 +182,19 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 	parameter ABW = `ABW;
 	parameter DBW = `DBW;
 
-	input reset;
+	input reset/*verilator public_flat*/;
 	input clk;
 	input nmi;				// active high
-	input irq;				// active high
+	input irq/*verilator public_flat*/;				// active high
 	input rdy;
 	input so;				// set overflow
-	input [DBW-1:0] di;		// data input bus
+	input [DBW-1:0] di/*verilator public_flat*/;		// data input bus
 	output [DBW-1:0] dout;	// data output bus
 	reg [DBW-1:0] dout;
 	output rw;
 	reg rw;
 	output [ABW-1:0] ma;
-	reg [ABW-1:0] ma;
+	reg [ABW-1:0] ma/*verilator public_flat*/;
 	// The following two signals can be useful for interfacing
 	// to synchronous memory by providing values just before the
 	// clock edge rather than after.
@@ -620,16 +620,189 @@ module bc6502(reset, clk, nmi, irq, rdy, so, di, dout, rw, ma,
 	end
 
 	always @(posedge clk)
-		if (reset) begin
+	begin
+		if (reset)
+		begin
 			pc_reg <= `RESET_VEC;
 			ma <= `RESET_VEC;
 		end
-		else if (rdy) begin
+		else 
+		if (rdy)
+		begin
 			ma <= ma_nxt;
 			pc_reg <= pc_nxt;
 		end
+	end
+	
+`ifdef SIMULATION
+	reg debug1/*verilator public_flat*/;
+	reg debug2/*verilator public_flat*/;
+	always @(posedge clk) begin
+    	if (reset == 1'b0 && debug2 == 1'b1) begin
+	 		$display("POS pc=%x %s ma=%x ir=%x di=%x dil=%x do=%x rw=%x a=%x x=%x y=%x vf=%x if=%x zf=%x nf=%x cf=%x sync=%x irq %x anyint %x im %x", pc_reg, getstatename(ir), ma , ir, di, dil, dout, rw, a_reg, x_reg, y_reg, vf, im, zf, nf, cf, sync, irq, any_int, im);
+	 	end
+	end
+
+	function [8*6-1:0] getstatename;
+		input [7:0] state;
+		begin
+			/* verilator lint_off WIDTH */
+		case(state)
+			
+			`JSR:		getstatename = "JSR";
+			`JMP:		getstatename = "JMP";
+			`JMP_I:		getstatename = "JMP_I";
+			`RTS:		getstatename = "RTS";
+			`RTI:		getstatename = "RTI";
+
+			`PHP:		getstatename = "PHP";
+			`PHA:		getstatename = "PHA";
+			`PLP:		getstatename = "PLP";
+			`PLA:		getstatename = "PLA";
+
+			`BRK:		getstatename = "BRK";
+			`INX:		getstatename = "INX";
+			`DEX:		getstatename = "DEX";
+			`INY:		getstatename = "INY";
+			`DEY:		getstatename = "DEY";
+			
+			`TYA:		getstatename = "TYA";
+			`TAY:		getstatename = "TAY";
+			`TXA:		getstatename = "TXA";
+			`TAX:		getstatename = "TAX";
+			`TXS:		getstatename = "TXS";
+			`TSX:		getstatename = "TSX";
 
 
+			`ASL_A:		getstatename = "ASL_A";
+			`ASL_Z:		getstatename = "ASL_Z";
+	// `define ASL_ZX	8'h16
+	// `define ASL_ABS	8'h0E
+	// `define ASL_AX	8'h1E
+	// `define	ROL_A	8'h2A
+	// `define ROL_Z	8'h26
+	// `define ROL_ZX	8'h36
+	// `define ROL_ABS	8'h2E
+	// `define ROL_AX	8'h3e
+			`LSR_A:		getstatename = "LSR_A";
+			`LSR_Z:		getstatename = "LSR_Z";
+			`LSR_ZX:	getstatename = "LSR_ZX";
+			`LSR_ABS:	getstatename = "LSR_ABS";
+			`LSR_AX:	getstatename = "LSR_AX";
+	// `define	ROR_A	8'h6A
+	// `define ROR_Z	8'h66
+	// `define ROR_ZX	8'h76
+	// `define ROR_ABS	8'h6E
+	// `define ROR_AX	8'h7E
+
+			`DEC_Z:		getstatename = "DEC_Z";
+			`DEC_ZX:	getstatename = "DEC_ZX";
+			`DEC_A:		getstatename = "DEC_A";
+			`DEC_AX:	getstatename = "DEC_AX";
+			`INC_Z:		getstatename = "INC_Z";
+			`INC_ZX:	getstatename = "INC_ZX";
+			`INC_A:		getstatename = "INC_A";
+			`INC_AX:	getstatename = "INC_AX";
+			`CLD:		getstatename = "CLD";
+			`SED:		getstatename = "SED";
+			`CLC:		getstatename = "CLC";
+			`SEC:		getstatename = "SEC";
+			`CLI:		getstatename = "CLI";
+			`SEI:		getstatename = "SEI";
+			`CLV:		getstatename = "CLV";
+
+			`NOP:		getstatename = "NOP";
+
+			8'h24:		getstatename = "BIT_Z";
+			8'h2c:		getstatename = "BIT_A";
+
+	// `define STY		3'b100
+	// `define LDY		3'b101
+	// `define CPY		3'b110
+	// `define CPX		3'b111
+
+	// // Group1 opcodes
+	// `define GROUP1	2'b01
+	// `define	ORA		3'b000
+			8'h29:		getstatename = "AND_I";
+			8'h59:		getstatename = "AND_Z";
+	// `define EOR		3'b010
+	// `define ADC		3'b011
+	// `define STA		3'b100
+	// `define LDA		3'b101
+			8'hC9:		getstatename = "CMP_I";
+			8'hC5:		getstatename = "CMP_Z";
+	// `define SBC		3'b111
+
+	// // Group2 opcodes
+	// `define GROUP2	2'b10
+	// `define ASL		3'b000
+	// `define ROL		3'b001
+	// `define LSR		3'b010
+	// `define ROR		3'b011
+	// `define STX		3'b100
+	// `define LDX		3'b101
+	// `define DEC		3'b110
+	// `define INC		3'b111
+
+			8'h10:		getstatename = "BPL";
+			8'h30:		getstatename = "BMI";
+			8'h50:		getstatename = "BVC";
+			8'h70:		getstatename = "BVS";
+			8'h90:		getstatename = "BCC";
+			8'hB0:		getstatename = "BCS";
+			8'hd0:		getstatename = "BNE";
+			8'hf0:		getstatename = "BEQ";
+
+			`LDA_I:		getstatename = "LDA_I";
+			`LDA_Z:		getstatename = "LDA_Z";
+			`LDA_ZX:	getstatename = "LDA_ZX";
+			`LDA_IX:	getstatename = "LDA_IX";
+			`LDA_IY:	getstatename = "LDA_IY";
+			`LDA_A:		getstatename = "LDA_A";
+			`LDA_AX:	getstatename = "LDA_AX";
+			`LDA_AY:	getstatename = "LDA_AY";
+
+			`LDY_I:		getstatename = "LDY_I";
+			`LDY_Z:		getstatename = "LDY_Z";
+			`LDY_ZX:	getstatename = "LDY_ZX";
+			`LDY_A:		getstatename = "LDY_A";
+			`LDY_AX:	getstatename = "LDY_AX";
+			
+			`CPY_I:		getstatename = "CPY_I";
+
+			`LDX_I:		getstatename = "LDX_I";
+			`LDX_Z:		getstatename = "LDX_Z";
+			`LDX_ZY:	getstatename = "LDX_ZY";
+			`LDX_A:		getstatename = "LDX_A";
+			`LDX_AY:	getstatename = "LDX_AY";
+
+			`CPX_I:		getstatename = "CPX_I";
+
+			`STA_Z:		getstatename = "STA_Z";
+			`STA_ZX:	getstatename = "STA_ZX";
+			`STA_IX:	getstatename = "STA_IX";
+			`STA_IY:	getstatename = "STA_IY";
+			`STA_A:		getstatename = "STA_A";
+			`STA_AX:	getstatename = "STA_AX";
+			`STA_AY:	getstatename = "STA_AY";
+
+			`STY_Z:		getstatename = "STY_Z";
+			`STY_ZX:	getstatename = "STY_ZX";
+			`STY_A:		getstatename = "STY_A";
+
+			`STX_Z:		getstatename = "STX_Z";
+			`STX_ZY:	getstatename = "STX_ZY";
+			`STX_A:		getstatename = "STX_A";
+
+			default:	getstatename = "???";
+		endcase
+	/* verilator lint_on WIDTH */		
+		end
+
+	endfunction
+
+`endif
 	// -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 	// sp manipulation
 	// we also reset the other regs here

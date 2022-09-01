@@ -201,7 +201,7 @@ localparam CONF_STR = {
 	"H0OJK,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
-	"O79,Mouse sensitivity,0,1,2,3,4,5,6,7;",
+	"OEF,Mouse/trackball speed,100%,200%,25%,50%;",
 	"OB,Vertical flip,Off,On;",
 	"OC,Cabinet,Cocktail,Upright;",
 	"-;",
@@ -292,6 +292,8 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 );
 
 
+///////////////////   CONTROLS   ////////////////////
+
 wire m_up_2     = joy[3];
 wire m_down_2   = joy[2];
 wire m_left_2   = joy[1];
@@ -313,6 +315,22 @@ wire m_slam = 1'b0;//generate Noise
 wire m_pause   = joy[8];
 wire screen_flip = status[11];
 wire m_cocktail = status[12];
+
+wire		vtb_dir1;
+wire		vtb_clk1;
+wire		htb_dir1;
+wire		htb_clk1;
+trackball trackball
+(
+	.clk(clk_sys),
+	.flip(control_flip),
+	.mouse_speed(status[15:14]),
+	.ps2_mouse(ps2_mouse),
+	.v_dir(vtb_dir1),
+	.v_clk(vtb_clk1),
+	.h_dir(htb_dir1),
+	.h_clk(htb_clk1)
+);
 
 // PAUSE SYSTEM
 wire				pause_cpu;
@@ -381,61 +399,9 @@ wire [7:0] sw2_i;
 wire [9:0] playerinput_i;
 
 // inputs: coin R, coin C, coin L, self test, cocktail, slam, start 2, start 1, fire 2, fire 1
-assign playerinput_i = { 1'b1, 1'b1, ~m_coin, ~m_test, ~m_cocktail, ~m_slam, ~m_start2, ~m_start1, ~m_fire_2, ~m_fire };
-
-assign joystick_i = { ~m_right,~m_left,~m_down,~m_up, ~m_right_2,~m_left_2,~m_down_2,~m_up_2};
-
-assign trakball_i = {trakdata[3],trakdata[3],trakdata[2],trakdata[2],trakdata[1],trakdata[1],trakdata[0],trakdata[0]};
-reg [3:0] trakdata;
-
-wire [2:0] mouse_sense;
-
-assign mouse_sense = status[9:7];
-
-// Trackball movement
-always @(posedge clk_sys) begin
-	reg [11:0] mposx;
-	reg [11:0] mposy;
-	reg        old_mstate;
-	reg [2:0]  mouse_delay;
-
-  if (mouse_delay == mouse_sense) begin
-
-	old_mstate <= ps2_mouse[24];
-	if(old_mstate != ps2_mouse[24]) begin
-		if(!(^mposx[11:10])) mposx <= mposx + {{4{ps2_mouse[4] ^ control_flip}}, ps2_mouse[15:8]};
-		if(!(^mposy[11:10])) mposy <= mposy + {{4{ps2_mouse[5] ^ control_flip}}, ps2_mouse[23:16]};
-	end
-
-	if(mposx != 0) begin
-		if(mposx[11]) begin
-			mposx <= mposx + 1'b1;
-			trakdata[3] = 1'b0;
-		end
-		else begin
-			mposx <= mposx - 1'b1;
-			trakdata[3] = 1'b1;
-		end
-		trakdata[2] = !trakdata[2];
-	end
-
-	if(mposy != 0) begin
-		if(mposy[11]) begin
-			mposy <= mposy + 1'b1;
-			trakdata[1] = 1'b0;
-		end
-		else begin
-			mposy <= mposy - 1'b1;
-			trakdata[1] = 1'b1;
-		end
-		trakdata[0] = !trakdata[0];
-	end
-	mouse_delay <= 0;
-	end
-  else
-   mouse_delay <= mouse_delay + 1;
-end
-
+assign playerinput_i = ~{ 1'b0, 1'b0, m_coin, m_test, m_cocktail, m_slam, m_start2, m_start1, m_fire_2, m_fire };
+assign joystick_i = ~{ m_right, m_left, m_down, m_up, m_right_2, m_left_2, m_down_2, m_up_2 };
+assign trakball_i = ~{ htb_dir1, htb_dir1, htb_clk1, htb_clk1, vtb_dir1, vtb_dir1, vtb_clk1, vtb_clk1 };
 
 wire rom_download = ioctl_download & !ioctl_index;
 wire nvram_download = ioctl_download & ioctl_index == 8'd4;

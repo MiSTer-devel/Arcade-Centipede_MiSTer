@@ -71,6 +71,16 @@ const int input_coin_2 = 9;
 const int input_coin_3 = 10;
 const int input_pause = 11;
 
+int mouse_speed = 2;
+int joystick_sensitivity = 0;
+bool pause;
+bool flip;
+
+unsigned char mouse_clock = 0;
+unsigned char mouse_buttons = 0;
+signed short mouse_x = 0;
+signed short mouse_y = 0;
+
 // Video
 // -----
 #define VGA_WIDTH 320
@@ -697,6 +707,8 @@ int main(int argc, char** argv, char** env) {
 		ImGui::SliderInt("Rotate", &video.output_rotate, -1, 1); ImGui::SameLine();
 		ImGui::Checkbox("Flip V", &video.output_vflip);
 		ImGui::Text("main_time: %d frame_count: %d sim FPS: %f", main_time, video.count_frame, video.stats_fps);
+		ImGui::Text("mousex: %d mousey: %d", mouse_x, mouse_y);
+
 
 		// Draw VGA output
 		ImGui::Image(video.texture_id, ImVec2(video.output_width * VGA_SCALE_X, video.output_height * VGA_SCALE_Y));
@@ -747,6 +759,81 @@ int main(int argc, char** argv, char** env) {
 		{
 			if (input.inputs[i]) { top->inputs |= (1 << i); }
 		}
+
+		mouse_buttons = 0 | (input.inputs[4]);
+		int acc = 16;
+		int dec = 1;
+		int fric = 2;
+
+		if (input.inputs[input_left]) { mouse_x -= acc; }
+		else if (mouse_x < 0) { mouse_x += (dec + (-mouse_x / fric)); }
+
+		if (input.inputs[input_right]) { mouse_x += acc; }
+		else if (mouse_x > 0) { mouse_x -= (dec + (mouse_x / fric)); }
+
+		if (input.inputs[input_up]) { mouse_y += acc; }
+		else if (mouse_y > 0) { mouse_y -= (dec + (mouse_y / fric)); }
+
+		if (input.inputs[input_down]) { mouse_y -= acc; }
+		else if (mouse_y < 0) { mouse_y += (dec + (-mouse_y / fric)); }
+
+		int lim = 255;
+		if (mouse_x > lim) { mouse_x = lim; }
+		if (mouse_x < -lim) { mouse_x = -lim; }
+		if (mouse_y > lim) { mouse_y = lim; }
+		if (mouse_y < -lim) { mouse_y = -lim; }
+
+		unsigned char ps2_mouse1;
+		unsigned char ps2_mouse2;
+		signed int x = -mouse_x;
+		mouse_buttons |= (x < 0) ? 0x10 : 0x00;
+		if (x < -255)
+		{
+			// min possible value + overflow flag
+			mouse_buttons |= 0x40;
+			ps2_mouse1 = 1; // -255
+		}
+		else if (x > 255)
+		{
+			// max possible value + overflow flag
+			mouse_buttons |= 0x40;
+			ps2_mouse1 = 255;
+		}
+		else
+		{
+			ps2_mouse1 = (char)x;
+		}
+
+		// ------ Y axis -----------
+		// store sign bit in first byte
+		signed int y = -mouse_y;
+		mouse_buttons |= (y < 0) ? 0x20 : 0x00;
+		if (y < -255)
+		{
+			// min possible value + overflow flag
+			mouse_buttons |= 0x80;
+			ps2_mouse2 = 1; // -255;
+		}
+		else if (y > 255)
+		{
+			// max possible value + overflow flag
+			mouse_buttons |= 0x80;
+			ps2_mouse2 = 255;
+		}
+		else
+		{
+			ps2_mouse2 = (char)y;
+		}
+
+		unsigned long mouse_temp = mouse_buttons;
+		mouse_temp += (((unsigned char)ps2_mouse1) << 8);
+		mouse_temp += (((unsigned char)ps2_mouse2) << 16);
+		
+		if (mouse_clock) { mouse_temp |= (1UL << 24); }
+		mouse_clock = !mouse_clock;
+		top->ps2_mouse = mouse_temp;
+
+		//top->ps2_mouse_ext = mouse_x + (mouse_buttons << 8);
 
 		// Run simulation
 		if (run_enable) {
