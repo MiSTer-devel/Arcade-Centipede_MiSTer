@@ -83,7 +83,7 @@ signed short mouse_y = 0;
 
 // Video
 // -----
-#define VGA_WIDTH 320
+#define VGA_WIDTH 256
 #define VGA_HEIGHT 256
 #define VGA_ROTATE -1  // 90 degrees anti-clockwise
 #define VGA_SCALE_X vga_scale

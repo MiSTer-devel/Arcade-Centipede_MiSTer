@@ -52,13 +52,14 @@ module emu
 	output        VGA_F1,
 	output [1:0]  VGA_SL,
 	output        VGA_SCALER, // Force VGA scaler
+	output        VGA_DISABLE, // analog out is off
 
 	input  [11:0] HDMI_WIDTH,
 	input  [11:0] HDMI_HEIGHT,
 	output        HDMI_FREEZE,
 
 `ifdef MISTER_FB
-	// Use framebuffer in DDRAM (USE_FB=1 in qsf)
+	// Use framebuffer in DDRAM
 	// FB_FORMAT:
 	//    [2:0] : 011=8bpp(palette) 100=16bpp 101=24bpp 110=32bpp
 	//    [3]   : 0=16bits 565 1=16bits 1555
@@ -180,15 +181,20 @@ assign USER_OUT = '1;
 assign {UART_RTS, UART_TXD, UART_DTR} = 0;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
-assign VGA_F1    = 0;
-assign VGA_SCALER =0;
-assign AUDIO_MIX = 0;
-assign LED_USER  = ioctl_download;
-assign LED_DISK  = 0;
-assign LED_POWER = 0;
-assign BUTTONS = 0;
 assign FB_FORCE_BLANK = '0;
-assign HDMI_FREEZE = 0;
+
+assign VGA_F1 = '0;
+assign VGA_SCALER = '0;
+assign VGA_DISABLE = '0;
+assign HDMI_FREEZE = '0;
+
+assign AUDIO_S = '0;
+assign AUDIO_MIX = '0;
+
+assign LED_DISK = '0;
+assign LED_POWER = '0;
+assign LED_USER = '0;
+assign BUTTONS = '0;
 
 wire [1:0] ar = status[20:19];
 
@@ -241,7 +247,7 @@ pll pll
 wire [31:0] status;
 wire  [1:0] buttons;
 wire        forced_scandoubler;
-wire  			video_rotated;
+wire        video_rotated;
 wire        direct_video;
 
 wire        ioctl_download;
@@ -372,18 +378,14 @@ screen_rotate screen_rotate (.*);
 arcade_video #(256,9,1) arcade_video
 (
 	.*,
-
 	.clk_video(clk_24),
 	.RGB_in(rgb_out),
 	.HBlank(hblank),
 	.VBlank(vblank),
 	.HSync(hs),
 	.VSync(vs),
-
 	.fx(status[5:3])
-
 );
-
 
 wire [7:0] audio;
 assign AUDIO_L = {audio,audio};
@@ -403,45 +405,45 @@ assign playerinput_i = ~{ 1'b0, 1'b0, m_coin, m_test, m_cocktail, m_slam, m_star
 assign joystick_i = ~{ m_right, m_left, m_down, m_up, m_right_2, m_left_2, m_down_2, m_up_2 };
 assign trakball_i = ~{ htb_dir1, htb_dir1, htb_clk1, htb_clk1, vtb_dir1, vtb_dir1, vtb_clk1, vtb_clk1 };
 
-wire rom_download = ioctl_download & !ioctl_index;
+wire rom_download = ioctl_download & ioctl_index == 8'd0;
 wire nvram_download = ioctl_download & ioctl_index == 8'd4;
 wire reset = (RESET | status[0] | buttons[1] | rom_download);
 wire clk_6_o;
 
-   // game & cpu
-   centipede uut(
-		 .clk_12mhz(clk_12),
- 		 .reset(reset),
-		 .playerinput_i(playerinput_i),
-		 .trakball_i(trakball_i),
-		 .flip_o(control_flip),
-		 .scrn_flip_i(screen_flip),
-		 .joystick_i(joystick_i),
-		 .sw1_i(sw[1]),
-		 .sw2_i(sw[2]),
-		 .led_o(led_o),
-		 .audio_o(audio),
+// game & cpu
+centipede uut(
+	.clk_12mhz(clk_12),
+	.reset(reset),
+	.playerinput_i(playerinput_i),
+	.trakball_i(trakball_i),
+	.flip_o(control_flip),
+	.scrn_flip_i(screen_flip),
+	.joystick_i(joystick_i),
+	.sw1_i(sw[1]),
+	.sw2_i(sw[2]),
+	.led_o(led_o),
+	.audio_o(audio),
 
-		 .dn_addr(ioctl_addr[15:0]),
-		 .dn_data(ioctl_dout),
-		 .dn_wr(ioctl_wr & rom_download),
+	.dn_addr(ioctl_addr[15:0]),
+	.dn_data(ioctl_dout),
+	.dn_wr(ioctl_wr & rom_download),
 
-		 .rgb_o(rgb_in),
-		 .sync_o(),
-		 .hsync_o(hs),
-		 .vsync_o(vs),
-		 .hblank_o(hblank),
-		 .vblank_o(vblank),
-		 .clk_6mhz_o(clk_6_o),
+	.rgb_o(rgb_in),
+	.sync_o(),
+	.hsync_o(hs),
+	.vsync_o(vs),
+	.hblank_o(hblank),
+	.vblank_o(vblank),
+	.clk_6mhz_o(clk_6_o),
 
-		.pause(pause_cpu),
+	.pause(pause_cpu),
 
-		.hs_address(ioctl_download ? ioctl_addr[5:0] : hs_address),
-		.hs_data_out(hs_data_out),
-		.hs_data_in(ioctl_dout),
-		.hs_write(ioctl_wr & nvram_download)
+	.hs_address(ioctl_download ? ioctl_addr[5:0] : hs_address),
+	.hs_data_out(hs_data_out),
+	.hs_data_in(ioctl_dout),
+	.hs_write(ioctl_wr & nvram_download)
 
-		 );
+);
 
 // HISCORE SYSTEM
 // --------------

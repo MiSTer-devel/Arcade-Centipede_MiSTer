@@ -29,14 +29,11 @@ module trackball(
 	output reg		v_clk,
 	output reg		h_dir,
 	output reg		h_clk
-
 );
 
 // Trackball movement
 localparam trackball_falloff_width = 11;
 reg [trackball_falloff_width-1:0] trackball_falloff;
-
-localparam analog_falloff_max = 1;
 
 reg [7:0] mouse_mag_x /* synthesis preserve noprune */;
 reg [7:0] mouse_mag_y /* synthesis preserve noprune */;
@@ -47,9 +44,9 @@ wire mouse_sign_y = /* synthesis preserve noprune */ ps2_mouse[5];
 
 localparam [15:0] clock_base = 16'd3500;
 
-reg [15:0] h_clock_counter;
+reg [15:0] h_clock_counter = 0;
 reg [15:0] h_clock_max = 0;
-reg [15:0] v_clock_counter;
+reg [15:0] v_clock_counter = 0;
 reg [15:0] v_clock_max = 0;
 
 // Trackball movement
