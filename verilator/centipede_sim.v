@@ -7,6 +7,7 @@ module top(
 	input clk_12 /*verilator public_flat*/,
 	input RESET/*verilator public_flat*/,
 	input [11:0]  inputs/*verilator public_flat*/,
+	input [24:0]  ps2_mouse/*verilator public_flat*/,
 
 	output [7:0] VGA_R/*verilator public_flat*/,
 	output [7:0] VGA_G/*verilator public_flat*/,
@@ -37,7 +38,7 @@ module top(
 	wire [7:0] audio;
 	wire [8:0] rgb;
 	wire [3:0] led/*verilator public_flat*/;
-	reg [7:0]  trakball/*verilator public_flat*/;
+	reg [7:0]  trakball_i/*verilator public_flat*/;
 	reg [7:0]  joystick/*verilator public_flat*/;
 	reg [9:0]  playerinput/*verilator public_flat*/;  
 
@@ -62,6 +63,30 @@ module top(
 	assign joystick[7:4] = { ~inputs[0],~inputs[1],~inputs[2],~inputs[3] }; // right, left, down, up 1
 	assign joystick[3:0] = { ~inputs[0],~inputs[1],~inputs[2],~inputs[3] }; // right, left, down, up 2
 	wire m_pause = inputs[11];       // pause
+
+	// Trackball
+	// ---------
+	wire		flip;
+	wire		vtb_dir1;
+	wire		vtb_clk1;
+	wire		htb_dir1;
+	wire		htb_clk1;
+	reg [1:0]	mouse_speed /*verilator public_flat*/ = 2'd02;
+	reg			joystick_sensitivity /*verilator public_flat*/ = 1'b0;
+
+	assign trakball_i = {htb_dir1,htb_dir1,htb_clk1,htb_clk1,vtb_dir1,vtb_dir1,vtb_clk1,vtb_clk1};
+
+	trackball trackball
+	(
+		.clk(clk_12),
+		.flip(flip),
+		.mouse_speed(mouse_speed),
+		.ps2_mouse(ps2_mouse),
+		.v_dir(vtb_dir1),
+		.v_clk(vtb_clk1),
+		.h_dir(htb_dir1),
+		.h_clk(htb_clk1)
+	);
 
 	// MAP OUTPUTS
 	assign AUDIO_L = {audio,audio};
@@ -105,8 +130,9 @@ pause #(3,3,3,24) pause (
 		.clk_12mhz(clk_12),
  		.reset(reset),
 		.playerinput_i(playerinput),
-		.trakball_i(trakball),
-		.joystick_i(joystick),
+		.trakball_i(trakball_i),
+		.joystick_i(8'hFF),
+		//.joystick_i(joystick),
 		.sw1_i(sw1),
 		.sw2_i(sw2),
 		.led_o(led),
@@ -119,8 +145,7 @@ pause #(3,3,3,24) pause (
 		.audio_o(audio),
 		.clk_6mhz_o(),
 		.flip_o(),
-		.v_flip(1'b1),
-		.h_flip(1'b0),
+		.scrn_flip_i(1'b0),
 		.dn_addr(ioctl_addr[15:0]),
 		.dn_data(ioctl_dout),
 		.dn_wr(ioctl_wr && rom_download),

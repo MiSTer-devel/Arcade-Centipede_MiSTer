@@ -425,6 +425,7 @@ module centipede(
 
 	assign phi2 = ~phi0;
 
+`ifndef SIMULATION
 	 T65 cpu(
 	 	.mode(0),
 	 	.res_n(mpu_reset_n),
@@ -440,9 +441,10 @@ module centipede(
 	 	.di(db_in),
 	 	.do(db_out)
 	 );
+`endif 
 
-/*
-	 p6502 p6502(
+`ifdef SIMULATION
+	p6502 p6502(
 		.clk(mpu_clk),
 		.reset_n(mpu_reset_n),
 		.nmi(1'b1),
@@ -456,7 +458,7 @@ module centipede(
 		.din(db_in),
 		.dout(db_out)
 	);
-*/
+`endif 
 
 	 // Address Decoder
 	assign write_n = ~(phi2 & ~rw_n);
@@ -1017,53 +1019,42 @@ module centipede(
 	 assign tb_v_dir = tb_mux[1];
 	 assign tb_v_ck = tb_mux[0];
 
-	 // H
-	 always @(posedge tb_h_ck or posedge reset)
-		 if (reset)
-			 tb_h_reg <= 0;
-		 else
-			 tb_h_reg <= tb_h_dir;
 
-	 assign tb_h_ctr_clr = reset | ~steerclr_n;
+	always @(posedge clk_12mhz)
+	begin
+		reg tb_clk_v_last;
+		reg tb_clk_h_last;
+		tb_clk_v_last <= tb_v_ck;
+		tb_clk_h_last <= tb_h_ck;
 
-	 always @(posedge tb_h_ck or posedge tb_h_ctr_clr)
-		 if (tb_h_ctr_clr)
-			 tb_h_ctr <= 0;
-		 else
-			 if (tb_h_reg)
-	 tb_h_ctr <= tb_h_ctr + 4'd1;
-			 else
-	 tb_h_ctr <= tb_h_ctr - 4'd1;
+		tb_v_reg <= tb_v_dir;
+		tb_h_reg <= tb_h_dir;
 
-	 // V
-	 always @(posedge tb_v_ck or posedge reset)
-		 if (reset)
-			 tb_v_reg <= 0;
-		 else
-			 tb_v_reg <= tb_v_dir;
+		if(tb_v_ck && !tb_clk_v_last)
+		begin
+			if (!tb_v_dir)
+				tb_v_ctr <= tb_v_ctr + 4'b1;
+			else
+				tb_v_ctr <= tb_v_ctr - 4'b1;
+		end
 
-	 assign tb_v_ctr_clr = reset | ~steerclr_n;
-
-	 always @(posedge tb_v_ck or posedge tb_v_ctr_clr)
-		 if (tb_v_ctr_clr)
-			 tb_v_ctr <= 0;
-		 else
-			 if (tb_v_reg)
-	 tb_v_ctr <= tb_v_ctr + 4'd1;
-			 else
-	 tb_v_ctr <= tb_v_ctr - 4'd1;
+		if(tb_h_ck && !tb_clk_h_last)
+		begin
+			if (!tb_h_dir)
+				tb_h_ctr <= tb_h_ctr + 4'b1;
+			else
+				tb_h_ctr <= tb_h_ctr - 4'b1;
+		end
+	end
 
 	 assign tra = tb_h_ctr;
 	 assign trb = tb_v_ctr;
 	 assign dir1 = tb_h_reg;
 	 assign dir2 = tb_v_reg;
-
 	 assign flip_o = flip;
-
 
 	 // Audio output circuitry
 
-// `ifndef SIMULATION
 	pokey pokey(
 		.clk(phi2 && !pause),
 		.enable_179(1'b1),
@@ -1078,22 +1069,6 @@ module centipede(
 		.channel_3_out(pokey_ch3)
 	);
  	assign audio = (pokey_ch0+pokey_ch1)+(pokey_ch2+pokey_ch3);
-// `endif
-
-// `ifdef SIMULATION
-	// pokey pokey(
-	// 	.clk(phi2),
-	// 	.reset(~mpu_reset_n),
-	// 	.a(ab[3:0]),
-	// 	.cs0_n(1'b0),
-	// 	.cs1_n(pokey_n),
-	// 	.wren(~rw_n & ~pokey_n),
-	// 	.d_in(db_out[7:0]),
-	// 	.d_out(pokey_out),
-	// 	.p(),
-	// 	.aud(audio));
-// `endif
-
 	assign audio_o = {audio, 2'b0};
 
 	 //
