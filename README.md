@@ -3,7 +3,8 @@
 FPGA implementation by lisper of [Centipede](https://github.com/lisper/arcade-centipede "Centipede") arcade game 
 Port to MiSTer by Alan Steremberg
 
-# Keyboard inputs :
+# Controls
+## Keyboard
 ```
    F1          : Coin + Start 1P
    F2          : Coin + Start 2P
@@ -18,9 +19,10 @@ Port to MiSTer by Alan Steremberg
      R,F,D,G     : Player 2 Movements
      A           : Player 2 Fire
    
-
- Joystick support. 
 ```
+## Mouse/Trackball
+- Use the 'Mouse/Trackball Speed' OSD option to achieve a comfortable speed for your device
+
 
 # Hiscore save/load
 
