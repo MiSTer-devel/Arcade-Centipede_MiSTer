@@ -207,7 +207,7 @@ localparam CONF_STR = {
 	"H0OJK,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
-	"OEF,Mouse/trackball speed,100%,200%,25%,50%;",
+	"OEFG,Mouse/trackball speed,100%,200%,400%,25%,50%,-,-,-;",
 	"OB,Vertical flip,Off,On;",
 	"OC,Cabinet,Cocktail,Upright;",
 	"-;",
@@ -330,7 +330,7 @@ trackball trackball
 (
 	.clk(clk_sys),
 	.flip(control_flip),
-	.mouse_speed(status[15:14]),
+	.mouse_speed(status[16:14]),
 	.ps2_mouse(ps2_mouse),
 	.v_dir(vtb_dir1),
 	.v_clk(vtb_clk1),
